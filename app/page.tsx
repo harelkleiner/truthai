@@ -19,11 +19,11 @@ type PlanKey = "free" | "starter" | "pro" | "business";
 
 /* ─── Pricing card ─── */
 function PricingCard({
-  name, description, price, annualPrice, features, cta, badge,
+  name, description = "", price, annualPrice, features, cta, badge,
   highlighted = false, locale, plan, billing,
 }: {
   name: string;
-  description: string;
+  description?: string;
   price: number;
   annualPrice: number;
   features: PlanFeature[];
@@ -75,9 +75,11 @@ function PricingCard({
         <p className={cn("text-xs font-bold uppercase tracking-widest mb-1", highlighted ? "text-teal-200" : "text-teal-600")}>
           {name}
         </p>
-        <p className={cn("text-sm mb-4 leading-snug", highlighted ? "text-teal-100" : "text-gray-500")}>
-          {description}
-        </p>
+        {description && (
+          <p className={cn("text-sm mb-4 leading-snug", highlighted ? "text-teal-100" : "text-gray-500")}>
+            {description}
+          </p>
+        )}
 
         <div className="flex items-end gap-1.5">
           <span className={cn("text-sm font-medium mb-1", highlighted ? "text-teal-200" : "text-gray-400")}>$</span>
@@ -155,9 +157,6 @@ function HowStep({
         <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-teal-700 text-white shadow-md">
           {icon}
         </div>
-        {!last && (
-          <div className="absolute top-12 left-1/2 -translate-x-1/2 hidden sm:block h-8 w-px bg-teal-200 mt-1" />
-        )}
       </div>
       <div className="sm:pt-3">
         <p className="text-xs font-bold text-teal-600 mb-0.5">{num}</p>
@@ -481,7 +480,6 @@ export default function HomePage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 lg:gap-4 items-start max-w-6xl mx-auto">
                 <PricingCard
                   name={ar ? "مجاني" : "Free"}
-                  description={ar ? "للاستخدام الشخصي والاستكشاف" : "For personal use & exploration"}
                   price={0} annualPrice={0}
                   features={freeFeatures}
                   cta={ar ? "ابدأ مجاناً" : "Get Started"}
@@ -489,15 +487,13 @@ export default function HomePage() {
 
                 <PricingCard
                   name={ar ? "مبتدئ" : "Starter"}
-                  description={ar ? "للكتّاب والمدونين المستقلين" : "For freelance writers & bloggers"}
-                  price={12} annualPrice={9}
+                  price={24} annualPrice={19}
                   features={starterFeatures}
                   cta={ar ? "ابدأ الآن" : "Get Started"}
                   locale={locale} plan="starter" billing={billing} />
 
                 <PricingCard
                   name={ar ? "احترافي" : "Pro"}
-                  description={ar ? "للمؤسسات والفرق المحترفة" : "For content teams & institutions"}
                   price={29} annualPrice={24}
                   features={proFeatures}
                   cta={ar ? "اشترك في Pro" : "Go Pro"}
@@ -507,7 +503,6 @@ export default function HomePage() {
 
                 <PricingCard
                   name={ar ? "أعمال" : "Business"}
-                  description={ar ? "للمؤسسات التي تحتاج لأكثر" : "For enterprises that need more"}
                   price={99} annualPrice={79}
                   features={bizFeatures}
                   cta={ar ? "تواصل مع فريق المبيعات" : "Contact Sales"}

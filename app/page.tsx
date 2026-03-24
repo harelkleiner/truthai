@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { useLocale } from "@/lib/locale-context";
 import { Navbar } from "@/components/layout/navbar";
@@ -9,18 +10,66 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Zap, ShieldCheck, Languages, ChevronRight, Check,
-  MessageSquare, ClipboardPaste, BrainCircuit, BarChart3,
+  MessageSquare, ClipboardPaste, BrainCircuit, BarChart3, ChevronDown,
 } from "lucide-react";
 import { cn, toEasternArabic } from "@/lib/utils";
 
+/* ─── Currency config ─── */
+type CurrencyCode = "USD" | "AED" | "SAR" | "KWD" | "BHD" | "QAR" | "OMR";
+
+const CURRENCIES: { code: CurrencyCode; symbol: string; rate: number; label: string }[] = [
+  { code: "USD", symbol: "$",    rate: 1,     label: "USD — US Dollar" },
+  { code: "AED", symbol: "د.إ", rate: 3.67,  label: "AED — درهم إماراتي" },
+  { code: "SAR", symbol: "ر.س", rate: 3.75,  label: "SAR — ريال سعودي" },
+  { code: "KWD", symbol: "د.ك", rate: 0.307, label: "KWD — دينار كويتي" },
+  { code: "BHD", symbol: "د.ب", rate: 0.376, label: "BHD — دينار بحريني" },
+  { code: "QAR", symbol: "ر.ق", rate: 3.64,  label: "QAR — ريال قطري" },
+  { code: "OMR", symbol: "ر.ع", rate: 0.385, label: "OMR — ريال عُماني" },
+];
+
+function convertPrice(usd: number, currency: CurrencyCode): string {
+  const c = CURRENCIES.find((x) => x.code === currency)!;
+  const val = usd * c.rate;
+  // Round to sensible precision
+  if (val < 1) return val.toFixed(2);
+  if (val < 10) return val.toFixed(1);
+  return Math.round(val).toString();
+}
+
 /* ─── Pricing card ─── */
 function PricingCard({
-  name, price, features, cta, badge, highlighted = false, locale, currency, plan,
+  name, priceUsd, annualPriceUsd, features, cta, badge, saveBadge,
+  highlighted = false, locale, currency, plan, billing,
 }: {
-  name: string; price: string; features: string[]; cta: string;
-  badge?: string; highlighted?: boolean; locale: string; currency: string;
+  name: string;
+  priceUsd: number | null;
+  annualPriceUsd: number | null;
+  features: string[];
+  cta: string;
+  badge?: string;
+  saveBadge?: string;
+  highlighted?: boolean;
+  locale: string;
+  currency: CurrencyCode;
   plan: "free" | "pro" | "business";
+  billing: "monthly" | "annual";
 }) {
+  const c = CURRENCIES.find((x) => x.code === currency)!;
+
+  const effectiveUsd = priceUsd === null ? null
+    : billing === "annual" && annualPriceUsd !== null ? annualPriceUsd
+    : priceUsd;
+
+  const priceDisplay = effectiveUsd === null ? (locale === "ar" ? "٠" : "0")
+    : locale === "ar" ? toEasternArabic(convertPrice(effectiveUsd, currency))
+    : convertPrice(effectiveUsd, currency);
+
+  const annualTotalDisplay = billing === "annual" && annualPriceUsd !== null
+    ? (locale === "ar"
+        ? `${toEasternArabic(convertPrice(annualPriceUsd * 12, currency))} ${c.symbol} / ${locale === "ar" ? "سنة" : "yr"}`
+        : `${c.symbol}${convertPrice(annualPriceUsd * 12, currency)} / yr`)
+    : null;
+
   async function handleClick() {
     if (plan === "free") { window.location.href = "/signup"; return; }
     if (plan === "business") { window.location.href = "/contact"; return; }
@@ -54,14 +103,26 @@ function PricingCard({
         <p className={cn("text-sm font-medium mb-1", highlighted ? "text-teal-100" : "text-gray-500")}>
           {name}
         </p>
-        <div className="flex items-baseline gap-1">
-          <span className="text-3xl sm:text-4xl font-bold">
-            {locale === "ar" ? toEasternArabic(price) : price}
+        <div className="flex items-baseline gap-1 flex-wrap">
+          <span className={cn("text-xs sm:text-sm font-medium", highlighted ? "text-teal-200" : "text-gray-400")}>
+            {c.symbol}
           </span>
+          <span className="text-3xl sm:text-4xl font-bold">{priceDisplay}</span>
           <span className={cn("text-xs sm:text-sm", highlighted ? "text-teal-100" : "text-gray-400")}>
-            {currency}
+            / {locale === "ar" ? "شهر" : "mo"}
           </span>
         </div>
+        {annualTotalDisplay && (
+          <p className={cn("text-xs mt-1", highlighted ? "text-teal-200" : "text-gray-400")}>
+            {locale === "ar" ? `يُحسب سنوياً • ` : `billed annually • `}
+            {annualTotalDisplay}
+          </p>
+        )}
+        {saveBadge && billing === "annual" && priceUsd !== null && (
+          <span className="mt-2 inline-block rounded-full bg-green-100 text-green-700 text-xs font-semibold px-2.5 py-0.5">
+            {saveBadge}
+          </span>
+        )}
       </div>
       <ul className="space-y-2.5 flex-1 mb-6 sm:mb-8">
         {features.map((f, i) => (
@@ -106,6 +167,9 @@ function HowStep({
 /* ─── Page ─── */
 export default function HomePage() {
   const { t, locale, dir } = useLocale();
+  const [billing, setBilling] = useState<"monthly" | "annual">("monthly");
+  const [currency, setCurrency] = useState<CurrencyCode>("USD");
+  const [currencyOpen, setCurrencyOpen] = useState(false);
 
   const featureItems = [
     { icon: <MessageSquare className="h-6 w-6 text-teal-600" />, ...t.features.dialect },
@@ -113,8 +177,6 @@ export default function HomePage() {
     { icon: <ShieldCheck className="h-6 w-6 text-teal-600" />, ...t.features.accuracy },
     { icon: <Zap className="h-6 w-6 text-teal-600" />, ...t.features.realtime },
   ];
-
-  const currencyLabel = `${t.pricing.currency} / ${t.pricing.monthly}`;
 
   const hiw = t.how_it_works;
   const howSteps = [
@@ -322,26 +384,102 @@ export default function HomePage() {
       {/* ── PRICING ── */}
       <section className="py-16 sm:py-20 bg-white" id="pricing">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-10 sm:mb-14">
+          <div className="text-center mb-8 sm:mb-10">
             <h2 className="text-2xl sm:text-3xl font-bold text-gray-900">{t.pricing.title}</h2>
             <p className="mt-2 text-gray-500">{t.pricing.subtitle}</p>
           </div>
-          {/* Stack on mobile, 3-col on md */}
+
+          {/* Controls: billing toggle + currency picker */}
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-10 sm:mb-14">
+
+            {/* Billing toggle */}
+            <div className="flex items-center rounded-xl border border-gray-200 bg-gray-50 p-1 gap-1">
+              <button
+                onClick={() => setBilling("monthly")}
+                className={cn(
+                  "rounded-lg px-4 py-1.5 text-sm font-medium transition-all",
+                  billing === "monthly"
+                    ? "bg-white text-gray-900 shadow-sm"
+                    : "text-gray-500 hover:text-gray-700",
+                )}
+              >
+                {locale === "ar" ? "شهري" : "Monthly"}
+              </button>
+              <button
+                onClick={() => setBilling("annual")}
+                className={cn(
+                  "flex items-center gap-1.5 rounded-lg px-4 py-1.5 text-sm font-medium transition-all",
+                  billing === "annual"
+                    ? "bg-white text-gray-900 shadow-sm"
+                    : "text-gray-500 hover:text-gray-700",
+                )}
+              >
+                {locale === "ar" ? "سنوي" : "Annual"}
+                <span className="rounded-full bg-green-100 text-green-700 text-xs font-bold px-1.5 py-0.5">
+                  {locale === "ar" ? "٢٠٪ خصم" : "-20%"}
+                </span>
+              </button>
+            </div>
+
+            {/* Currency picker */}
+            <div className="relative">
+              <button
+                onClick={() => setCurrencyOpen((o) => !o)}
+                className="flex items-center gap-2 rounded-xl border border-gray-200 bg-gray-50 px-4 py-2 text-sm font-medium text-gray-700 hover:border-teal-400 transition-colors"
+              >
+                <span>{CURRENCIES.find((c) => c.code === currency)?.symbol}</span>
+                <span>{currency}</span>
+                <ChevronDown className="h-3.5 w-3.5 text-gray-400" />
+              </button>
+              {currencyOpen && (
+                <div className="absolute top-full mt-1 z-20 w-52 rounded-xl border border-gray-100 bg-white shadow-lg overflow-hidden"
+                  style={{ [dir === "rtl" ? "right" : "left"]: 0 }}>
+                  {CURRENCIES.map((c) => (
+                    <button
+                      key={c.code}
+                      onClick={() => { setCurrency(c.code); setCurrencyOpen(false); }}
+                      className={cn(
+                        "w-full flex items-center gap-2 px-4 py-2.5 text-sm hover:bg-gray-50 transition-colors text-start",
+                        c.code === currency ? "text-teal-700 font-semibold bg-teal-50" : "text-gray-700",
+                      )}
+                    >
+                      <span className="w-6 text-base">{c.symbol}</span>
+                      <span>{c.label}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Cards */}
           <div className="flex flex-col gap-5 md:grid md:grid-cols-3 md:items-center max-w-5xl mx-auto">
             <PricingCard
-              name={t.pricing.free.name} price={t.pricing.free.price}
+              name={t.pricing.free.name}
+              priceUsd={0} annualPriceUsd={0}
               features={t.pricing.free.features} cta={t.pricing.free.cta}
-              locale={locale} currency={currencyLabel} plan="free" />
+              locale={locale} currency={currency} plan="free" billing={billing} />
             <PricingCard
-              name={t.pricing.pro.name} price={t.pricing.pro.price}
+              name={t.pricing.pro.name}
+              priceUsd={49} annualPriceUsd={39}
               features={t.pricing.pro.features} cta={t.pricing.pro.cta}
-              badge={t.pricing.pro.badge} highlighted
-              locale={locale} currency={currencyLabel} plan="pro" />
+              badge={t.pricing.pro.badge}
+              saveBadge={locale === "ar" ? "شهران مجاناً 🎉" : "2 months free 🎉"}
+              highlighted
+              locale={locale} currency={currency} plan="pro" billing={billing} />
             <PricingCard
-              name={t.pricing.business.name} price={t.pricing.business.price}
+              name={t.pricing.business.name}
+              priceUsd={199} annualPriceUsd={159}
               features={t.pricing.business.features} cta={t.pricing.business.cta}
-              locale={locale} currency={currencyLabel} plan="business" />
+              saveBadge={locale === "ar" ? "وفّر ٢٠٪" : "Save 20%"}
+              locale={locale} currency={currency} plan="business" billing={billing} />
           </div>
+
+          <p className="mt-6 text-center text-xs text-gray-400">
+            {locale === "ar"
+              ? "الأسعار تقريبية بناءً على أسعار الصرف الحالية • السعر الأساسي بالدولار الأمريكي"
+              : "Prices are approximate based on current exchange rates • Base price in USD"}
+          </p>
         </div>
       </section>
 

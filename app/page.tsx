@@ -8,11 +8,13 @@ import { Footer } from "@/components/layout/footer";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
 import {
   Zap, ShieldCheck, Languages, ChevronRight, Check, X,
-  MessageSquare, ClipboardPaste, BrainCircuit, BarChart3,
+  MessageSquare, ClipboardPaste, BrainCircuit, BarChart3, Loader2,
+  Lock, Upload, AlertCircle,
 } from "lucide-react";
-import { cn, toEasternArabic } from "@/lib/utils";
+import { cn, toEasternArabic, countWords } from "@/lib/utils";
 
 type PlanFeature = { text: string; included: boolean };
 type PlanKey = "free" | "starter" | "pro" | "business";
@@ -171,6 +173,18 @@ function HowStep({
 export default function HomePage() {
   const { t, locale, dir } = useLocale();
   const [billing, setBilling] = useState<"monthly" | "annual">("monthly");
+  const [tryText, setTryText] = useState("");
+  const [tryLoading, setTryLoading] = useState(false);
+  const [tryError, setTryError] = useState<string | null>(null);
+  const [tryResult, setTryResult] = useState<{
+    human_pct: number;
+    ai_pct: number;
+    dialect: "emirati" | "gulf" | "msa" | "mixed" | "other";
+    summary: string;
+  } | null>(null);
+  const tryWordCount = countWords(tryText);
+  const TRY_LIMIT = 500;
+  const tryOverLimit = tryWordCount > TRY_LIMIT;
 
   const featureItems = [
     { icon: <MessageSquare className="h-6 w-6 text-teal-600" />, ...t.features.dialect },
@@ -185,6 +199,26 @@ export default function HomePage() {
     { num: hiw.step2_num, icon: <BrainCircuit className="h-5 w-5" />,   title: hiw.step2_title, desc: hiw.step2_desc },
     { num: hiw.step3_num, icon: <BarChart3 className="h-5 w-5" />,      title: hiw.step3_title, desc: hiw.step3_desc },
   ];
+
+  async function handleTryAnalyze() {
+    if (!tryText.trim()) return;
+    setTryLoading(true);
+    setTryError(null);
+    try {
+      const res = await fetch("/api/try-detect", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: tryText }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error ?? t.errors.generic);
+      setTryResult(data);
+    } catch (err: any) {
+      setTryError(err?.message ?? t.errors.generic);
+    } finally {
+      setTryLoading(false);
+    }
+  }
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -228,43 +262,154 @@ export default function HomePage() {
               <span key={i} className="opacity-80 hover:opacity-100 transition">{f}</span>
             ))}
           </div>
-        </div>
-      </section>
 
-      {/* ── DEMO PREVIEW ── */}
-      <section className="py-12 sm:py-16 bg-white">
-        <div className="mx-auto max-w-3xl px-4">
-          <div className="rounded-2xl border border-gray-100 bg-gray-50 p-4 sm:p-6 shadow-sm">
-            <div className="mb-3 flex items-center gap-2">
-              <div className="h-2.5 w-2.5 rounded-full bg-red-400" />
-              <div className="h-2.5 w-2.5 rounded-full bg-yellow-400" />
-              <div className="h-2.5 w-2.5 rounded-full bg-green-400" />
-              <span className="ml-3 text-xs text-gray-400">
-                {locale === "ar" ? "مثال تحليل" : "Analysis Example"}
-              </span>
-            </div>
-            <div dir="rtl" className="rounded-xl bg-white p-4 sm:p-5 text-right shadow-inner overflow-x-hidden">
-              <p className="font-arabic leading-loose text-gray-700 text-sm sm:text-base">
-                <span className="sentence-human">وايد زين هذا الموضوع يا جماعة،</span>{" "}
-                <span className="sentence-ai">ومن الجدير بالذكر أن هذه القضية تستحق الدراسة المعمقة والتحليل الشامل.</span>{" "}
-                <span className="sentence-human">بس عيل شلون نقدر نحسنه؟</span>
+          {/* ── Inline analysis widget ── */}
+          <div className="mt-12 mx-auto max-w-2xl text-left">
+            <div className="rounded-3xl border border-white/70 bg-white/80 backdrop-blur-sm shadow-2xl p-6 sm:p-8">
+
+              <p className="mb-5 text-center text-xs font-bold uppercase tracking-widest text-teal-600">
+                {locale === "ar" ? "حلّل النص الآن" : "Analyze Text"}
               </p>
-              <div className="mt-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 rounded-lg bg-teal-50 px-3 sm:px-4 py-2.5">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-gray-500">{locale === "ar" ? "اللهجة:" : "Dialect:"}</span>
-                  <Badge variant="default" className="text-xs">{locale === "ar" ? "إماراتية ✓" : "Emirati ✓"}</Badge>
-                </div>
-                <div className="flex items-center gap-3 text-xs">
-                  <span className="flex items-center gap-1">
-                    <span className="h-2 w-2 rounded-full bg-green-500" />
-                    <span className="text-green-700">{locale === "ar" ? "٦٢٪ بشري" : "62% Human"}</span>
+
+              {/* Textarea */}
+              <textarea
+                autoFocus
+                dir="rtl"
+                value={tryText}
+                onChange={(e) => { setTryText(e.target.value); setTryError(null); setTryResult(null); }}
+                placeholder={t.analyze.paste_placeholder}
+                rows={6}
+                className={cn(
+                  "w-full rounded-xl border p-4 font-arabic text-base leading-loose text-gray-800 resize-none",
+                  "placeholder:text-gray-300 focus:outline-none focus:ring-2 focus:ring-teal-500 transition",
+                  tryOverLimit ? "border-red-300 bg-red-50" : "border-gray-200 bg-white",
+                )}
+              />
+
+              {/* Word counter + progress */}
+              <div className="mt-2 flex items-center justify-between text-xs text-gray-400">
+                <span>
+                  {locale === "ar"
+                    ? `${toEasternArabic(String(tryWordCount))} / ${toEasternArabic(String(TRY_LIMIT))} ${t.analyze.word_count}`
+                    : `${tryWordCount} / ${TRY_LIMIT} ${t.analyze.word_count}`}
+                </span>
+                {tryOverLimit && (
+                  <span className="flex items-center gap-1 text-red-500 font-medium">
+                    <AlertCircle className="h-3.5 w-3.5" />
+                    {locale === "ar" ? "تجاوزت الحد المسموح" : "Limit exceeded"}
                   </span>
-                  <span className="flex items-center gap-1">
-                    <span className="h-2 w-2 rounded-full bg-red-400" />
-                    <span className="text-red-600">{locale === "ar" ? "٣٨٪ ذكاء اصطناعي" : "38% AI"}</span>
-                  </span>
-                </div>
+                )}
               </div>
+              <Progress
+                value={Math.min((tryWordCount / TRY_LIMIT) * 100, 100)}
+                className="mt-1.5 h-1"
+                indicatorClassName={tryOverLimit ? "bg-red-500" : undefined}
+              />
+
+              {/* File upload — locked, prompts signup */}
+              <div className="mt-5">
+                <p className="mb-2 text-sm font-medium text-gray-600">
+                  {locale === "ar" ? "أو ارفع ملفاً" : "Or upload a file"}
+                </p>
+                <Link href="/signup">
+                  <div className="group flex cursor-pointer flex-col items-center justify-center gap-1.5 rounded-xl border-2 border-dashed border-gray-200 bg-gray-50 py-5 transition hover:border-teal-400 hover:bg-teal-50">
+                    <Lock className="h-4 w-4 text-gray-300 group-hover:text-teal-400 transition" />
+                    <p className="text-sm text-gray-400 group-hover:text-teal-600 transition">
+                      {locale === "ar"
+                        ? "أنشئ حساباً مجانياً لرفع PDF وDOCX وTXT"
+                        : "Create a free account to upload PDF, DOCX, or TXT"}
+                    </p>
+                    <span className="text-xs font-semibold text-teal-600 group-hover:underline">
+                      {locale === "ar" ? "إنشاء حساب مجاني ←" : "Sign up free →"}
+                    </span>
+                  </div>
+                </Link>
+              </div>
+
+              {/* Error */}
+              {tryError && (
+                <div className="mt-4 flex items-center gap-2 rounded-lg bg-red-50 px-3 py-2.5 text-sm text-red-700">
+                  <AlertCircle className="h-4 w-4 shrink-0" />
+                  {tryError}
+                </div>
+              )}
+
+              {/* Analyze button */}
+              <Button
+                onClick={handleTryAnalyze}
+                disabled={tryLoading || !tryText.trim() || tryOverLimit}
+                className="mt-5 h-12 w-full bg-teal-700 text-base font-semibold text-white hover:bg-teal-600 disabled:opacity-50"
+              >
+                {tryLoading ? (
+                  <><Loader2 className="h-4 w-4 animate-spin" /> {t.analyze.analyzing}</>
+                ) : (
+                  t.analyze.submit
+                )}
+              </Button>
+
+              {/* Results */}
+              {tryResult && (
+                <div className="mt-6 space-y-3 animate-in fade-in slide-in-from-bottom-2 duration-500">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="rounded-2xl border border-green-100 bg-green-50 p-4 text-center">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-green-700 mb-1">
+                        {locale === "ar" ? "بشري" : "Human"}
+                      </p>
+                      <p className="text-4xl font-extrabold text-green-600">
+                        {locale === "ar"
+                          ? `${toEasternArabic(String(tryResult.human_pct))}%`
+                          : `${tryResult.human_pct}%`}
+                      </p>
+                    </div>
+                    <div className="rounded-2xl border border-red-100 bg-red-50 p-4 text-center">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-red-700 mb-1">
+                        {locale === "ar" ? "ذكاء اصطناعي" : "AI"}
+                      </p>
+                      <p className="text-4xl font-extrabold text-red-500">
+                        {locale === "ar"
+                          ? `${toEasternArabic(String(tryResult.ai_pct))}%`
+                          : `${tryResult.ai_pct}%`}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between rounded-xl border border-teal-100 bg-teal-50 px-4 py-3">
+                    <span className="text-sm font-medium text-teal-800">
+                      {locale === "ar" ? "اللهجة" : "Dialect"}
+                    </span>
+                    <Badge variant="default" className="text-xs">
+                      {{
+                        emirati: t.results.dialect_emirati,
+                        gulf: t.results.dialect_gulf,
+                        msa: t.results.dialect_msa,
+                        mixed: t.results.dialect_mixed,
+                        other: t.results.dialect_other,
+                      }[tryResult.dialect] ?? tryResult.dialect}
+                    </Badge>
+                  </div>
+
+                  {tryResult.summary && (
+                    <div className="rounded-xl border border-gray-100 bg-gray-50 px-4 py-3">
+                      <p dir="rtl" className="text-sm leading-relaxed text-gray-600 font-arabic">
+                        {tryResult.summary}
+                      </p>
+                    </div>
+                  )}
+
+                  <div className="pt-2 text-center">
+                    <p className="mb-3 text-xs text-gray-400">
+                      {locale === "ar"
+                        ? "سجّل للحصول على تحليل كامل على مستوى الجمل وسجل الفحوصات"
+                        : "Sign up for sentence-level analysis, full history & more"}
+                    </p>
+                    <Link href="/signup">
+                      <Button className="bg-teal-700 hover:bg-teal-600 text-white px-8">
+                        {locale === "ar" ? "إنشاء حساب مجاني" : "Create Free Account"}
+                      </Button>
+                    </Link>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>

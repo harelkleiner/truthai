@@ -9,31 +9,33 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
-  Zap, ShieldCheck, Languages, ChevronRight, Check,
+  Zap, ShieldCheck, Languages, ChevronRight, Check, X,
   MessageSquare, ClipboardPaste, BrainCircuit, BarChart3,
 } from "lucide-react";
 import { cn, toEasternArabic } from "@/lib/utils";
 
 type PlanFeature = { text: string; included: boolean };
+type PlanKey = "free" | "starter" | "pro" | "business";
 
 /* ─── Pricing card ─── */
 function PricingCard({
-  name, price, annualPrice, features, cta, badge, saveBadge,
+  name, description, price, annualPrice, features, cta, badge,
   highlighted = false, locale, plan, billing,
 }: {
   name: string;
+  description: string;
   price: number;
   annualPrice: number;
   features: PlanFeature[];
   cta: string;
   badge?: string;
-  saveBadge?: string;
   highlighted?: boolean;
   locale: string;
-  plan: "free" | "pro" | "business";
+  plan: PlanKey;
   billing: "monthly" | "annual";
 }) {
   const effective = billing === "annual" ? annualPrice : price;
+  const originalPrice = billing === "annual" && annualPrice < price && price > 0 ? price : null;
   const displayNum = effective === 0
     ? (locale === "ar" ? "٠" : "0")
     : locale === "ar" ? toEasternArabic(String(effective)) : String(effective);
@@ -57,60 +59,84 @@ function PricingCard({
 
   return (
     <div className={cn(
-      "relative rounded-2xl border p-6 sm:p-8 flex flex-col",
+      "relative flex flex-col rounded-2xl border p-6 transition-shadow",
       highlighted
-        ? "border-teal-700 bg-teal-700 text-white shadow-xl sm:scale-105 z-10"
-        : "border-gray-200 bg-white",
+        ? "border-teal-600 bg-teal-700 text-white shadow-2xl ring-2 ring-teal-400 ring-offset-2 scale-[1.03] z-10"
+        : "border-gray-200 bg-white shadow-sm hover:shadow-md",
     )}>
       {badge && (
-        <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-amber-500 px-4 py-0.5 text-xs font-bold text-white whitespace-nowrap">
+        <span className="absolute -top-3.5 left-1/2 -translate-x-1/2 rounded-full bg-amber-500 px-4 py-1 text-xs font-bold text-white whitespace-nowrap shadow">
           {badge}
         </span>
       )}
-      <div className="mb-6">
-        <p className={cn("text-sm font-medium mb-1", highlighted ? "text-teal-100" : "text-gray-500")}>
+
+      {/* Header */}
+      <div className="mb-5">
+        <p className={cn("text-xs font-bold uppercase tracking-widest mb-1", highlighted ? "text-teal-200" : "text-teal-600")}>
           {name}
         </p>
-        <div className="flex items-baseline gap-1">
-          <span className={cn("text-sm font-medium", highlighted ? "text-teal-200" : "text-gray-400")}>$</span>
-          <span className="text-3xl sm:text-4xl font-bold">{displayNum}</span>
-          <span className={cn("text-xs sm:text-sm", highlighted ? "text-teal-100" : "text-gray-400")}>
-            / {locale === "ar" ? "شهر" : "mo"}
-          </span>
+        <p className={cn("text-sm mb-4 leading-snug", highlighted ? "text-teal-100" : "text-gray-500")}>
+          {description}
+        </p>
+
+        <div className="flex items-end gap-1.5">
+          <span className={cn("text-sm font-medium mb-1", highlighted ? "text-teal-200" : "text-gray-400")}>$</span>
+          <span className="text-4xl font-extrabold leading-none">{displayNum}</span>
+          <div className="mb-0.5">
+            {originalPrice && (
+              <p className={cn("text-xs line-through leading-none", highlighted ? "text-teal-300" : "text-gray-400")}>
+                ${originalPrice}
+              </p>
+            )}
+            <p className={cn("text-xs", highlighted ? "text-teal-100" : "text-gray-400")}>
+              / {locale === "ar" ? "شهر" : "mo"}
+            </p>
+          </div>
         </div>
+
         {billing === "annual" && annualPrice > 0 && (
-          <p className={cn("text-xs mt-1", highlighted ? "text-teal-200" : "text-gray-400")}>
+          <p className={cn("text-xs mt-1.5", highlighted ? "text-teal-200" : "text-gray-400")}>
             {locale === "ar"
-              ? `يُحسب سنوياً • $${toEasternArabic(String(annualPrice * 12))} / سنة`
-              : `billed annually • $${annualPrice * 12} / yr`}
+              ? `يُحسب سنوياً — $${toEasternArabic(String(annualPrice * 12))} / سنة`
+              : `Billed annually — $${annualPrice * 12}/yr`}
           </p>
         )}
-        {saveBadge && billing === "annual" && price > 0 && (
+        {billing === "annual" && price > 0 && (
           <span className="mt-2 inline-block rounded-full bg-green-100 text-green-700 text-xs font-semibold px-2.5 py-0.5">
-            {saveBadge}
+            {locale === "ar" ? "وفّر ٢٠٪" : "Save 20%"}
           </span>
         )}
       </div>
-      <ul className="space-y-2 flex-1 mb-6 sm:mb-8">
+
+      {/* Divider */}
+      <div className={cn("mb-5 border-t", highlighted ? "border-teal-600" : "border-gray-100")} />
+
+      {/* Features */}
+      <ul className="space-y-2.5 flex-1 mb-7">
         {features.map((f, i) => (
-          <li key={i} className="flex items-start gap-2.5 text-sm">
+          <li key={i} className="flex items-start gap-2.5">
             {f.included ? (
-              <Check className={cn("h-4 w-4 mt-0.5 shrink-0", highlighted ? "text-teal-200" : "text-teal-600")} />
+              <Check className={cn("h-4 w-4 mt-0.5 shrink-0", highlighted ? "text-teal-300" : "text-teal-500")} />
             ) : (
-              <span className={cn("mt-0.5 shrink-0 h-4 w-4 flex items-center justify-center text-xs font-bold", highlighted ? "text-teal-400" : "text-gray-300")}>✕</span>
+              <X className={cn("h-4 w-4 mt-0.5 shrink-0", highlighted ? "text-teal-500" : "text-gray-300")} />
             )}
             <span className={cn(
+              "text-sm leading-snug",
               f.included
-                ? (highlighted ? "text-teal-50" : "text-gray-700")
-                : (highlighted ? "text-teal-300 line-through" : "text-gray-300 line-through"),
-              "text-sm",
+                ? (highlighted ? "text-white" : "text-gray-700")
+                : (highlighted ? "text-teal-400" : "text-gray-300"),
             )}>
               {f.text}
             </span>
           </li>
         ))}
       </ul>
-      <Button onClick={handleClick} className="w-full" variant={highlighted ? "secondary" : "default"}>
+
+      <Button
+        onClick={handleClick}
+        className={cn("w-full font-semibold", highlighted ? "bg-white text-teal-700 hover:bg-teal-50" : "")}
+        variant={highlighted ? "secondary" : "default"}
+      >
         {cta}
       </Button>
     </div>
@@ -360,102 +386,143 @@ export default function HomePage() {
       {/* ── PRICING ── */}
       {(() => {
         const ar = locale === "ar";
+
         const freeFeatures: PlanFeature[] = [
-          { text: ar ? "٣ فحوصات شهرياً" : "3 checks / month", included: true },
+          { text: ar ? "٥ فحوصات شهرياً" : "5 checks / month", included: true },
           { text: ar ? "حتى ٥٠٠ كلمة لكل فحص" : "Up to 500 words per check", included: true },
           { text: ar ? "كشف اللهجة الأساسي" : "Basic dialect detection", included: true },
           { text: ar ? "نتائج فورية" : "Instant results", included: true },
-          { text: ar ? "رفع الملفات" : "File upload", included: false },
           { text: ar ? "سجل التحليلات" : "Analysis history", included: false },
-          { text: ar ? "الوصول عبر API" : "API access", included: false },
+          { text: ar ? "رفع الملفات" : "File upload", included: false },
           { text: ar ? "دعم أولوي" : "Priority support", included: false },
         ];
+
+        const starterFeatures: PlanFeature[] = [
+          { text: ar ? "٥٠ فحصاً شهرياً" : "50 checks / month", included: true },
+          { text: ar ? "حتى ٢٬٠٠٠ كلمة لكل فحص" : "Up to 2,000 words per check", included: true },
+          { text: ar ? "كشف لهجة متقدم" : "Advanced dialect detection", included: true },
+          { text: ar ? "سجل كامل للتحليلات" : "Full analysis history", included: true },
+          { text: ar ? "درجة صحة المحتوى" : "Authenticity scoring", included: true },
+          { text: ar ? "رفع الملفات" : "File upload", included: false },
+          { text: ar ? "دعم أولوي" : "Priority support", included: false },
+        ];
+
         const proFeatures: PlanFeature[] = [
           { text: ar ? "فحوصات غير محدودة" : "Unlimited checks", included: true },
-          { text: ar ? "حتى ٥٬٠٠٠ كلمة لكل فحص" : "Up to 5,000 words per check", included: true },
+          { text: ar ? "كلمات غير محدودة لكل فحص" : "Unlimited words per check", included: true },
           { text: ar ? "كشف لهجة متقدم" : "Advanced dialect detection", included: true },
-          { text: ar ? "رفع الملفات (١٠ ملفات / شهر)" : "File upload (10 files / month)", included: true },
-          { text: ar ? "سجل كامل" : "Full analysis history", included: true },
-          { text: ar ? "الوصول عبر API" : "API access", included: true },
+          { text: ar ? "رفع الملفات (٥٠ ملف / شهر)" : "50 file uploads / month", included: true },
+          { text: ar ? "درجة صحة المحتوى" : "Authenticity scoring", included: true },
           { text: ar ? "دعم أولوي" : "Priority support", included: true },
           { text: ar ? "مقاعد الفريق" : "Team seats", included: false },
-          { text: ar ? "مدير حساب مخصص" : "Dedicated account manager", included: false },
         ];
+
         const bizFeatures: PlanFeature[] = [
           { text: ar ? "فحوصات غير محدودة" : "Unlimited checks", included: true },
-          { text: ar ? "نصوص غير محدودة" : "Unlimited words", included: true },
-          { text: ar ? "كشف لهجة متقدم" : "Advanced dialect detection", included: true },
+          { text: ar ? "كلمات غير محدودة" : "Unlimited words", included: true },
           { text: ar ? "رفع ملفات غير محدود" : "Unlimited file uploads", included: true },
-          { text: ar ? "سجل كامل" : "Full analysis history", included: true },
-          { text: ar ? "الوصول عبر API" : "API access", included: true },
-          { text: ar ? "دعم أولوي" : "Priority support", included: true },
-          { text: ar ? "مقاعد الفريق" : "Team seats", included: true },
+          { text: ar ? "تقارير PDF بعلامتك التجارية" : "White-label PDF reports", included: true },
+          { text: ar ? "حتى ١٠ مقاعد للفريق" : "Up to 10 team seats", included: true },
+          { text: ar ? "درجة صحة المحتوى" : "Authenticity scoring", included: true },
           { text: ar ? "مدير حساب مخصص" : "Dedicated account manager", included: true },
         ];
-      return (
-      <section className="py-16 sm:py-20 bg-white" id="pricing">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-8 sm:mb-10">
-            <h2 className="text-2xl sm:text-3xl font-bold text-gray-900">{t.pricing.title}</h2>
-            <p className="mt-2 text-gray-500">{t.pricing.subtitle}</p>
-          </div>
 
-          {/* Billing toggle */}
-          <div className="flex justify-center mb-10 sm:mb-14">
-            <div className="flex items-center rounded-xl border border-gray-200 bg-gray-50 p-1 gap-1">
-              <button
-                onClick={() => setBilling("monthly")}
-                className={cn(
-                  "rounded-lg px-5 py-2 text-sm font-medium transition-all",
-                  billing === "monthly"
-                    ? "bg-white text-gray-900 shadow-sm"
-                    : "text-gray-500 hover:text-gray-700",
-                )}
-              >
-                {locale === "ar" ? "شهري" : "Monthly"}
-              </button>
-              <button
-                onClick={() => setBilling("annual")}
-                className={cn(
-                  "flex items-center gap-2 rounded-lg px-5 py-2 text-sm font-medium transition-all",
-                  billing === "annual"
-                    ? "bg-white text-gray-900 shadow-sm"
-                    : "text-gray-500 hover:text-gray-700",
-                )}
-              >
-                {locale === "ar" ? "سنوي" : "Annual"}
-                <span className="rounded-full bg-green-100 text-green-700 text-xs font-bold px-2 py-0.5">
-                  {locale === "ar" ? "٢ شهر مجاناً" : "2 months free"}
-                </span>
-              </button>
+        return (
+          <section className="py-16 sm:py-24 bg-gray-50" id="pricing">
+            <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+
+              {/* Header */}
+              <div className="text-center mb-8">
+                <h2 className="text-2xl sm:text-3xl font-bold text-gray-900">
+                  {ar ? "الأسعار" : "Simple, transparent pricing"}
+                </h2>
+                <p className="mt-2 text-gray-500 max-w-xl mx-auto">
+                  {ar
+                    ? "اختر الخطة المناسبة — ابدأ مجاناً، وارتقِ عند الحاجة"
+                    : "Start free, scale when you're ready. No hidden fees."}
+                </p>
+              </div>
+
+              {/* Billing toggle */}
+              <div className="flex justify-center mb-10 sm:mb-14">
+                <div className="flex items-center rounded-full border border-gray-200 bg-white p-1 gap-1 shadow-sm">
+                  <button
+                    onClick={() => setBilling("monthly")}
+                    className={cn(
+                      "rounded-full px-5 py-2 text-sm font-medium transition-all",
+                      billing === "monthly"
+                        ? "bg-teal-700 text-white shadow"
+                        : "text-gray-500 hover:text-gray-700",
+                    )}
+                  >
+                    {ar ? "شهري" : "Monthly"}
+                  </button>
+                  <button
+                    onClick={() => setBilling("annual")}
+                    className={cn(
+                      "flex items-center gap-2 rounded-full px-5 py-2 text-sm font-medium transition-all",
+                      billing === "annual"
+                        ? "bg-teal-700 text-white shadow"
+                        : "text-gray-500 hover:text-gray-700",
+                    )}
+                  >
+                    {ar ? "سنوي" : "Annual"}
+                    <span className={cn(
+                      "rounded-full text-xs font-bold px-2 py-0.5",
+                      billing === "annual" ? "bg-white text-teal-700" : "bg-green-100 text-green-700",
+                    )}>
+                      {ar ? "خصم ٢٠٪" : "Save 20%"}
+                    </span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Cards — 2 col mobile → 4 col desktop */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 lg:gap-4 items-start max-w-6xl mx-auto">
+                <PricingCard
+                  name={ar ? "مجاني" : "Free"}
+                  description={ar ? "للاستخدام الشخصي والاستكشاف" : "For personal use & exploration"}
+                  price={0} annualPrice={0}
+                  features={freeFeatures}
+                  cta={ar ? "ابدأ مجاناً" : "Get Started"}
+                  locale={locale} plan="free" billing={billing} />
+
+                <PricingCard
+                  name={ar ? "مبتدئ" : "Starter"}
+                  description={ar ? "للكتّاب والمدونين المستقلين" : "For freelance writers & bloggers"}
+                  price={12} annualPrice={9}
+                  features={starterFeatures}
+                  cta={ar ? "ابدأ الآن" : "Get Started"}
+                  locale={locale} plan="starter" billing={billing} />
+
+                <PricingCard
+                  name={ar ? "احترافي" : "Pro"}
+                  description={ar ? "للمؤسسات والفرق المحترفة" : "For content teams & institutions"}
+                  price={29} annualPrice={24}
+                  features={proFeatures}
+                  cta={ar ? "اشترك في Pro" : "Go Pro"}
+                  badge={ar ? "الأكثر شعبية ✦" : "Most Popular ✦"}
+                  highlighted
+                  locale={locale} plan="pro" billing={billing} />
+
+                <PricingCard
+                  name={ar ? "أعمال" : "Business"}
+                  description={ar ? "للمؤسسات التي تحتاج لأكثر" : "For enterprises that need more"}
+                  price={99} annualPrice={79}
+                  features={bizFeatures}
+                  cta={ar ? "تواصل مع فريق المبيعات" : "Contact Sales"}
+                  locale={locale} plan="business" billing={billing} />
+              </div>
+
+              <p className="mt-8 text-center text-xs text-gray-400">
+                {ar
+                  ? "جميع الأسعار بالدولار الأمريكي • لا رسوم خفية • إلغاء في أي وقت"
+                  : "All prices in USD · No hidden fees · Cancel anytime"}
+              </p>
             </div>
-          </div>
-
-          {/* Cards */}
-          <div className="flex flex-col gap-5 md:grid md:grid-cols-3 md:items-start max-w-5xl mx-auto">
-            <PricingCard
-              name={t.pricing.free.name}
-              price={0} annualPrice={0}
-              features={freeFeatures} cta={t.pricing.free.cta}
-              locale={locale} plan="free" billing={billing} />
-            <PricingCard
-              name={t.pricing.pro.name}
-              price={24} annualPrice={19}
-              features={proFeatures} cta={t.pricing.pro.cta}
-              badge={t.pricing.pro.badge}
-              saveBadge={locale === "ar" ? "شهران مجاناً 🎉" : "2 months free 🎉"}
-              highlighted
-              locale={locale} plan="pro" billing={billing} />
-            <PricingCard
-              name={t.pricing.business.name}
-              price={99} annualPrice={79}
-              features={bizFeatures} cta={t.pricing.business.cta}
-              saveBadge={locale === "ar" ? "وفّر ٢٠٪" : "Save 20%"}
-              locale={locale} plan="business" billing={billing} />
-          </div>
-        </div>
-      </section>
-      );})()}
+          </section>
+        );
+      })()}
 
       <Footer />
     </div>

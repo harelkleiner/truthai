@@ -17,33 +17,33 @@ import { cn, toEasternArabic } from "@/lib/utils";
 /* ─── Currency config ─── */
 type CurrencyCode = "USD" | "AED" | "SAR" | "KWD" | "BHD" | "QAR" | "OMR";
 
+// Rates = how much target currency per 1 AED (base is AED)
 const CURRENCIES: { code: CurrencyCode; symbol: string; rate: number; label: string }[] = [
-  { code: "USD", symbol: "$",    rate: 1,     label: "USD — US Dollar" },
-  { code: "AED", symbol: "د.إ", rate: 3.67,  label: "AED — درهم إماراتي" },
-  { code: "SAR", symbol: "ر.س", rate: 3.75,  label: "SAR — ريال سعودي" },
-  { code: "KWD", symbol: "د.ك", rate: 0.307, label: "KWD — دينار كويتي" },
-  { code: "BHD", symbol: "د.ب", rate: 0.376, label: "BHD — دينار بحريني" },
-  { code: "QAR", symbol: "ر.ق", rate: 3.64,  label: "QAR — ريال قطري" },
-  { code: "OMR", symbol: "ر.ع", rate: 0.385, label: "OMR — ريال عُماني" },
+  { code: "AED", symbol: "د.إ", rate: 1,      label: "AED — درهم إماراتي" },
+  { code: "USD", symbol: "$",   rate: 0.2723, label: "USD — US Dollar" },
+  { code: "SAR", symbol: "ر.س", rate: 1.0211, label: "SAR — ريال سعودي" },
+  { code: "KWD", symbol: "د.ك", rate: 0.0839, label: "KWD — دينار كويتي" },
+  { code: "BHD", symbol: "د.ب", rate: 0.1024, label: "BHD — دينار بحريني" },
+  { code: "QAR", symbol: "ر.ق", rate: 0.9911, label: "QAR — ريال قطري" },
+  { code: "OMR", symbol: "ر.ع", rate: 0.1049, label: "OMR — ريال عُماني" },
 ];
 
-function convertPrice(usd: number, currency: CurrencyCode): string {
+function convertPrice(aed: number, currency: CurrencyCode): string {
   const c = CURRENCIES.find((x) => x.code === currency)!;
-  const val = usd * c.rate;
-  // Round to sensible precision
-  if (val < 1) return val.toFixed(2);
+  const val = aed * c.rate;
+  if (val < 1)  return val.toFixed(2);
   if (val < 10) return val.toFixed(1);
   return Math.round(val).toString();
 }
 
 /* ─── Pricing card ─── */
 function PricingCard({
-  name, priceUsd, annualPriceUsd, features, cta, badge, saveBadge,
+  name, priceAed, annualPriceAed, features, cta, badge, saveBadge,
   highlighted = false, locale, currency, plan, billing,
 }: {
   name: string;
-  priceUsd: number | null;
-  annualPriceUsd: number | null;
+  priceAed: number | null;
+  annualPriceAed: number | null;
   features: string[];
   cta: string;
   badge?: string;
@@ -56,18 +56,18 @@ function PricingCard({
 }) {
   const c = CURRENCIES.find((x) => x.code === currency)!;
 
-  const effectiveUsd = priceUsd === null ? null
-    : billing === "annual" && annualPriceUsd !== null ? annualPriceUsd
-    : priceUsd;
+  const effectiveAed = priceAed === null ? null
+    : billing === "annual" && annualPriceAed !== null ? annualPriceAed
+    : priceAed;
 
-  const priceDisplay = effectiveUsd === null ? (locale === "ar" ? "٠" : "0")
-    : locale === "ar" ? toEasternArabic(convertPrice(effectiveUsd, currency))
-    : convertPrice(effectiveUsd, currency);
+  const priceDisplay = effectiveAed === null ? (locale === "ar" ? "٠" : "0")
+    : locale === "ar" ? toEasternArabic(convertPrice(effectiveAed, currency))
+    : convertPrice(effectiveAed, currency);
 
-  const annualTotalDisplay = billing === "annual" && annualPriceUsd !== null
+  const annualTotalDisplay = billing === "annual" && annualPriceAed !== null
     ? (locale === "ar"
-        ? `${toEasternArabic(convertPrice(annualPriceUsd * 12, currency))} ${c.symbol} / ${locale === "ar" ? "سنة" : "yr"}`
-        : `${c.symbol}${convertPrice(annualPriceUsd * 12, currency)} / yr`)
+        ? `${toEasternArabic(convertPrice(annualPriceAed * 12, currency))} ${c.symbol} / سنة`
+        : `${c.symbol}${convertPrice(annualPriceAed * 12, currency)} / yr`)
     : null;
 
   async function handleClick() {
@@ -168,7 +168,7 @@ function HowStep({
 export default function HomePage() {
   const { t, locale, dir } = useLocale();
   const [billing, setBilling] = useState<"monthly" | "annual">("monthly");
-  const [currency, setCurrency] = useState<CurrencyCode>("USD");
+  const [currency, setCurrency] = useState<CurrencyCode>("AED");
   const [currencyOpen, setCurrencyOpen] = useState(false);
 
   const featureItems = [
@@ -456,12 +456,12 @@ export default function HomePage() {
           <div className="flex flex-col gap-5 md:grid md:grid-cols-3 md:items-center max-w-5xl mx-auto">
             <PricingCard
               name={t.pricing.free.name}
-              priceUsd={0} annualPriceUsd={0}
+              priceAed={0} annualPriceAed={0}
               features={t.pricing.free.features} cta={t.pricing.free.cta}
               locale={locale} currency={currency} plan="free" billing={billing} />
             <PricingCard
               name={t.pricing.pro.name}
-              priceUsd={49} annualPriceUsd={39}
+              priceAed={49} annualPriceAed={39}
               features={t.pricing.pro.features} cta={t.pricing.pro.cta}
               badge={t.pricing.pro.badge}
               saveBadge={locale === "ar" ? "شهران مجاناً 🎉" : "2 months free 🎉"}
@@ -469,7 +469,7 @@ export default function HomePage() {
               locale={locale} currency={currency} plan="pro" billing={billing} />
             <PricingCard
               name={t.pricing.business.name}
-              priceUsd={199} annualPriceUsd={159}
+              priceAed={199} annualPriceAed={159}
               features={t.pricing.business.features} cta={t.pricing.business.cta}
               saveBadge={locale === "ar" ? "وفّر ٢٠٪" : "Save 20%"}
               locale={locale} currency={currency} plan="business" billing={billing} />
@@ -477,8 +477,8 @@ export default function HomePage() {
 
           <p className="mt-6 text-center text-xs text-gray-400">
             {locale === "ar"
-              ? "الأسعار تقريبية بناءً على أسعار الصرف الحالية • السعر الأساسي بالدولار الأمريكي"
-              : "Prices are approximate based on current exchange rates • Base price in USD"}
+              ? "الأسعار تقريبية بناءً على أسعار الصرف الحالية • السعر الأساسي بالدرهم الإماراتي"
+              : "Prices are approximate based on current exchange rates • Base price in AED"}
           </p>
         </div>
       </section>

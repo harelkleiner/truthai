@@ -158,3 +158,22 @@ begin
   where id = uid;
 end;
 $$;
+
+-- Contact messages table
+create table public.contact_messages (
+  id uuid primary key default uuid_generate_v4(),
+  name text not null,
+  email text not null,
+  subject text,
+  message text not null,
+  read boolean not null default false,
+  created_at timestamptz not null default now()
+);
+
+-- Only admins (service role) can read; anyone can insert
+alter table public.contact_messages enable row level security;
+
+create policy "Service role full access"
+  on public.contact_messages
+  using (true)
+  with check (true);

@@ -15,12 +15,12 @@ export const PLANS = {
   pro: {
     productId: process.env.POLAR_PRO_PRODUCT_ID ?? "",
     name: "Pro",
-    price_aed: 49,
+    price_usd: 24,
   },
   business: {
     productId: process.env.POLAR_BUSINESS_PRODUCT_ID ?? "",
     name: "Business",
-    price_aed: 199,
+    price_usd: 99,
   },
 } as const;
 

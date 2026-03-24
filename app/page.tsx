@@ -118,7 +118,7 @@ function PricingCard({
             {annualTotalDisplay}
           </p>
         )}
-        {saveBadge && billing === "annual" && priceUsd !== null && (
+        {saveBadge && billing === "annual" && priceAed !== null && (
           <span className="mt-2 inline-block rounded-full bg-green-100 text-green-700 text-xs font-semibold px-2.5 py-0.5">
             {saveBadge}
           </span>

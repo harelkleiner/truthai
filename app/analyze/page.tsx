@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useLocale } from "@/lib/locale-context";
 import { Navbar } from "@/components/layout/navbar";
 import { Footer } from "@/components/layout/footer";
@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { Upload, Loader2, X, FileText, AlertCircle, ChevronDown, ChevronUp } from "lucide-react";
+import { Upload, Loader2, X, FileText, AlertCircle, ChevronDown, ChevronUp, Lock } from "lucide-react";
 import { cn, countWords, toEasternArabic } from "@/lib/utils";
 import type { DetectionResult, MacroSignals } from "@/lib/detection/detector";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from "recharts";
@@ -139,10 +139,28 @@ export default function AnalyzePage() {
   const [result, setResult] = useState<DetectionResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [fileName, setFileName] = useState<string | null>(null);
+  const [userPlan, setUserPlan] = useState<"free" | "pro" | "business">("free");
   const fileRef = useRef<HTMLInputElement>(null);
 
+  // Load user plan from Supabase
+  useEffect(() => {
+    (async () => {
+      try {
+        const { createClient } = await import("@/lib/supabase");
+        const sb = createClient();
+        const { data: { user } } = await sb.auth.getUser();
+        if (user) {
+          const { data } = await sb.from("users").select("plan").eq("id", user.id).single();
+          if (data?.plan) setUserPlan(data.plan as "free" | "pro" | "business");
+        }
+      } catch { /* no-op */ }
+    })();
+  }, []);
+
+  const canUpload = userPlan === "pro" || userPlan === "business";
+  const wordLimit = userPlan === "free" ? FREE_WORD_LIMIT : userPlan === "pro" ? 5000 : Infinity;
   const wordCount = countWords(text);
-  const overLimit = wordCount > FREE_WORD_LIMIT;
+  const overLimit = wordCount > wordLimit;
 
   async function handleAnalyze() {
     if (!text.trim()) { setError(t.errors.empty_text); return; }
@@ -232,7 +250,7 @@ export default function AnalyzePage() {
                     )}
                   </div>
                   <Progress
-                    value={Math.min((wordCount / FREE_WORD_LIMIT) * 100, 100)}
+                    value={Math.min((wordCount / (wordLimit === Infinity ? 5000 : wordLimit)) * 100, 100)}
                     className="mt-2 h-1.5"
                     indicatorClassName={overLimit ? "bg-red-500" : undefined}
                   />
@@ -243,26 +261,45 @@ export default function AnalyzePage() {
                   <p className={cn("mb-2 text-sm font-medium text-gray-700", dir === "rtl" ? "text-right" : "text-left")}>
                     {t.analyze.upload_label}
                   </p>
-                  <div
-                    onClick={() => fileRef.current?.click()}
-                    className="flex cursor-pointer items-center justify-center gap-3 rounded-xl border-2 border-dashed border-gray-200 bg-gray-50 py-6 transition hover:border-teal-400 hover:bg-teal-50"
-                  >
-                    {fileName ? (
-                      <div className="flex items-center gap-2 text-sm text-teal-700">
-                        <FileText className="h-4 w-4" />
-                        <span>{fileName}</span>
-                        <button onClick={(e) => { e.stopPropagation(); setFileName(null); setText(""); }}>
-                          <X className="h-4 w-4 text-gray-400 hover:text-red-500" />
-                        </button>
+                  {canUpload ? (
+                    <>
+                      <div
+                        onClick={() => fileRef.current?.click()}
+                        className="flex cursor-pointer items-center justify-center gap-3 rounded-xl border-2 border-dashed border-gray-200 bg-gray-50 py-6 transition hover:border-teal-400 hover:bg-teal-50"
+                      >
+                        {fileName ? (
+                          <div className="flex items-center gap-2 text-sm text-teal-700">
+                            <FileText className="h-4 w-4" />
+                            <span>{fileName}</span>
+                            <button onClick={(e) => { e.stopPropagation(); setFileName(null); setText(""); }}>
+                              <X className="h-4 w-4 text-gray-400 hover:text-red-500" />
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="text-center">
+                            <Upload className="mx-auto mb-1 h-5 w-5 text-gray-400" />
+                            <p className="text-sm text-gray-500">{t.analyze.upload_hint}</p>
+                            {userPlan === "pro" && (
+                              <p className="text-xs text-gray-400 mt-1">
+                                {locale === "ar" ? "١٠ ملفات / شهر" : "10 files / month"}
+                              </p>
+                            )}
+                          </div>
+                        )}
                       </div>
-                    ) : (
-                      <div className="text-center">
-                        <Upload className="mx-auto mb-1 h-5 w-5 text-gray-400" />
-                        <p className="text-sm text-gray-500">{t.analyze.upload_hint}</p>
-                      </div>
-                    )}
-                  </div>
-                  <input ref={fileRef} type="file" accept=".txt,.docx,.pdf" className="hidden" onChange={handleFileUpload} />
+                      <input ref={fileRef} type="file" accept=".txt,.docx,.pdf" className="hidden" onChange={handleFileUpload} />
+                    </>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-gray-200 bg-gray-50 py-6 opacity-60">
+                      <Lock className="h-5 w-5 text-gray-400" />
+                      <p className="text-sm text-gray-500">
+                        {locale === "ar" ? "رفع الملفات متاح في خطة Pro" : "File upload available on Pro plan"}
+                      </p>
+                      <a href="/#pricing" className="text-xs font-semibold text-teal-600 hover:underline">
+                        {locale === "ar" ? "ترقية الخطة ←" : "Upgrade →"}
+                      </a>
+                    </div>
+                  )}
                 </div>
 
                 {error && (

@@ -14,6 +14,8 @@ import {
 } from "lucide-react";
 import { cn, toEasternArabic } from "@/lib/utils";
 
+type PlanFeature = { text: string; included: boolean };
+
 /* ─── Pricing card ─── */
 function PricingCard({
   name, price, annualPrice, features, cta, badge, saveBadge,
@@ -22,7 +24,7 @@ function PricingCard({
   name: string;
   price: number;
   annualPrice: number;
-  features: string[];
+  features: PlanFeature[];
   cta: string;
   badge?: string;
   saveBadge?: string;
@@ -89,11 +91,22 @@ function PricingCard({
           </span>
         )}
       </div>
-      <ul className="space-y-2.5 flex-1 mb-6 sm:mb-8">
+      <ul className="space-y-2 flex-1 mb-6 sm:mb-8">
         {features.map((f, i) => (
-          <li key={i} className="flex items-start gap-2 text-sm">
-            <Check className={cn("h-4 w-4 mt-0.5 shrink-0", highlighted ? "text-teal-200" : "text-teal-600")} />
-            <span className={highlighted ? "text-teal-50" : "text-gray-600"}>{f}</span>
+          <li key={i} className="flex items-start gap-2.5 text-sm">
+            {f.included ? (
+              <Check className={cn("h-4 w-4 mt-0.5 shrink-0", highlighted ? "text-teal-200" : "text-teal-600")} />
+            ) : (
+              <span className={cn("mt-0.5 shrink-0 h-4 w-4 flex items-center justify-center text-xs font-bold", highlighted ? "text-teal-400" : "text-gray-300")}>✕</span>
+            )}
+            <span className={cn(
+              f.included
+                ? (highlighted ? "text-teal-50" : "text-gray-700")
+                : (highlighted ? "text-teal-300 line-through" : "text-gray-300 line-through"),
+              "text-sm",
+            )}>
+              {f.text}
+            </span>
           </li>
         ))}
       </ul>
@@ -345,6 +358,41 @@ export default function HomePage() {
       </section>
 
       {/* ── PRICING ── */}
+      {(() => {
+        const ar = locale === "ar";
+        const freeFeatures: PlanFeature[] = [
+          { text: ar ? "٣ فحوصات شهرياً" : "3 checks / month", included: true },
+          { text: ar ? "حتى ٥٠٠ كلمة لكل فحص" : "Up to 500 words per check", included: true },
+          { text: ar ? "كشف اللهجة الأساسي" : "Basic dialect detection", included: true },
+          { text: ar ? "نتائج فورية" : "Instant results", included: true },
+          { text: ar ? "رفع الملفات" : "File upload", included: false },
+          { text: ar ? "سجل التحليلات" : "Analysis history", included: false },
+          { text: ar ? "الوصول عبر API" : "API access", included: false },
+          { text: ar ? "دعم أولوي" : "Priority support", included: false },
+        ];
+        const proFeatures: PlanFeature[] = [
+          { text: ar ? "فحوصات غير محدودة" : "Unlimited checks", included: true },
+          { text: ar ? "حتى ٥٬٠٠٠ كلمة لكل فحص" : "Up to 5,000 words per check", included: true },
+          { text: ar ? "كشف لهجة متقدم" : "Advanced dialect detection", included: true },
+          { text: ar ? "رفع الملفات (١٠ ملفات / شهر)" : "File upload (10 files / month)", included: true },
+          { text: ar ? "سجل كامل" : "Full analysis history", included: true },
+          { text: ar ? "الوصول عبر API" : "API access", included: true },
+          { text: ar ? "دعم أولوي" : "Priority support", included: true },
+          { text: ar ? "مقاعد الفريق" : "Team seats", included: false },
+          { text: ar ? "مدير حساب مخصص" : "Dedicated account manager", included: false },
+        ];
+        const bizFeatures: PlanFeature[] = [
+          { text: ar ? "فحوصات غير محدودة" : "Unlimited checks", included: true },
+          { text: ar ? "نصوص غير محدودة" : "Unlimited words", included: true },
+          { text: ar ? "كشف لهجة متقدم" : "Advanced dialect detection", included: true },
+          { text: ar ? "رفع ملفات غير محدود" : "Unlimited file uploads", included: true },
+          { text: ar ? "سجل كامل" : "Full analysis history", included: true },
+          { text: ar ? "الوصول عبر API" : "API access", included: true },
+          { text: ar ? "دعم أولوي" : "Priority support", included: true },
+          { text: ar ? "مقاعد الفريق" : "Team seats", included: true },
+          { text: ar ? "مدير حساب مخصص" : "Dedicated account manager", included: true },
+        ];
+      return (
       <section className="py-16 sm:py-20 bg-white" id="pricing">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-8 sm:mb-10">
@@ -384,16 +432,16 @@ export default function HomePage() {
           </div>
 
           {/* Cards */}
-          <div className="flex flex-col gap-5 md:grid md:grid-cols-3 md:items-center max-w-5xl mx-auto">
+          <div className="flex flex-col gap-5 md:grid md:grid-cols-3 md:items-start max-w-5xl mx-auto">
             <PricingCard
               name={t.pricing.free.name}
               price={0} annualPrice={0}
-              features={t.pricing.free.features} cta={t.pricing.free.cta}
+              features={freeFeatures} cta={t.pricing.free.cta}
               locale={locale} plan="free" billing={billing} />
             <PricingCard
               name={t.pricing.pro.name}
               price={24} annualPrice={19}
-              features={t.pricing.pro.features} cta={t.pricing.pro.cta}
+              features={proFeatures} cta={t.pricing.pro.cta}
               badge={t.pricing.pro.badge}
               saveBadge={locale === "ar" ? "شهران مجاناً 🎉" : "2 months free 🎉"}
               highlighted
@@ -401,12 +449,13 @@ export default function HomePage() {
             <PricingCard
               name={t.pricing.business.name}
               price={99} annualPrice={79}
-              features={t.pricing.business.features} cta={t.pricing.business.cta}
+              features={bizFeatures} cta={t.pricing.business.cta}
               saveBadge={locale === "ar" ? "وفّر ٢٠٪" : "Save 20%"}
               locale={locale} plan="business" billing={billing} />
           </div>
         </div>
       </section>
+      );})()}
 
       <Footer />
     </div>

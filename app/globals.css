@@ -1,26 +1,94 @@
+@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800&family=Noto+Naskh+Arabic:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap');
 @import "tailwindcss";
+
+@theme {
+  --color-teal-50: #f0fafa;
+  --color-teal-100: #cceff0;
+  --color-teal-400: #2ab0b5;
+  --color-teal-500: #14919B;
+  --color-teal-600: #0f7d87;
+  --color-teal-700: #0D7377;
+  --color-teal-800: #0a5c5f;
+  --color-teal-900: #073f42;
+  --color-amber-50: #fffbeb;
+  --color-amber-100: #fef3c7;
+  --color-amber-400: #fbbf24;
+  --color-amber-500: #C9A84C;
+  --color-amber-600: #a88838;
+  --color-gold-500: #C9A84C;
+  --color-gold-600: #a88838;
+}
 
 :root {
   --background: #ffffff;
   --foreground: #171717;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --teal: #0D7377;
+  --teal-light: #14919B;
+  --gold: #C9A84C;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+}
+
+html[dir="rtl"] {
+  font-family: 'Cairo', 'Noto Naskh Arabic', sans-serif;
+}
+
+html[dir="ltr"] {
+  font-family: 'Inter', sans-serif;
+}
+
+html, body {
+  transition: direction 0.3s ease;
+}
+
+.font-arabic {
+  font-family: 'Cairo', 'Noto Naskh Arabic', sans-serif;
+}
+
+.sentence-human {
+  background-color: rgba(16, 185, 129, 0.15);
+  border-bottom: 2px solid #10b981;
+  border-radius: 2px;
+  padding: 1px 2px;
+}
+
+.sentence-ai {
+  background-color: rgba(239, 68, 68, 0.12);
+  border-bottom: 2px solid #ef4444;
+  border-radius: 2px;
+  padding: 1px 2px;
+}
+
+.sentence-uncertain {
+  background-color: rgba(245, 158, 11, 0.12);
+  border-bottom: 2px solid #f59e0b;
+  border-radius: 2px;
+  padding: 1px 2px;
+}
+
+@keyframes score-ring {
+  from { stroke-dashoffset: 283; }
+  to { stroke-dashoffset: var(--offset); }
+}
+
+.score-ring {
+  animation: score-ring 1.2s ease-out forwards;
+}
+
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: #f1f5f9; }
+::-webkit-scrollbar-thumb { background: #0D7377; border-radius: 3px; }
+
+.text-gold-gradient {
+  background: linear-gradient(135deg, #C9A84C, #e8c96e);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.bg-teal-gradient {
+  background: linear-gradient(135deg, #0D7377 0%, #14919B 100%);
 }

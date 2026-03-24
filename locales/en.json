@@ -1,0 +1,203 @@
+{
+  "meta": {
+    "title": "TruthAI — Arabic AI Content Detection",
+    "description": "The only platform purpose-built for Emirati Arabic AI content detection across the GCC"
+  },
+  "nav": {
+    "home": "Home",
+    "analyze": "Analyze Text",
+    "dashboard": "Dashboard",
+    "pricing": "Pricing",
+    "login": "Sign In",
+    "signup": "Sign Up",
+    "logout": "Sign Out",
+    "settings": "Settings"
+  },
+  "hero": {
+    "badge": "First in the Gulf",
+    "title": "Detect AI-Generated Content",
+    "subtitle": "in Emirati & Gulf Arabic",
+    "description": "The only platform capable of distinguishing human writing from AI in Emirati dialect, Gulf Arabic, and MSA — with full Arabic-English code-switching support",
+    "cta_primary": "Start Free",
+    "cta_secondary": "See How It Works",
+    "trusted": "Trusted by institutions across UAE, KSA, Kuwait, Bahrain, Qatar & Oman"
+  },
+  "features": {
+    "title": "What Makes Us Different?",
+    "dialect": {
+      "title": "Emirati Dialect Detection",
+      "description": "We recognize Emirati dialect markers: «وايد» (very), «جذي» (like this), «شلونك» (how are you), «يبيلك» (you need), «عيل» (so), «ماكو» (there isn't)"
+    },
+    "codeswitching": {
+      "title": "Arabic-English Code-Switching",
+      "description": "We handle mixed-language text combining Arabic and English as commonly found in Emirati everyday writing"
+    },
+    "accuracy": {
+      "title": "High Accuracy",
+      "description": "Model specifically trained on Gulf Arabic texts for the highest detection accuracy"
+    },
+    "realtime": {
+      "title": "Real-Time Analysis",
+      "description": "Results in seconds with sentence-level breakdown"
+    }
+  },
+  "analyze": {
+    "title": "Analyze Text",
+    "paste_label": "Paste text here",
+    "paste_placeholder": "Type or paste Arabic text here... Example: وايد زين هالموضوع، بس لازم نشوف إذا كتبه إنسان ولا الذكاء الاصطناعي",
+    "upload_label": "Or upload a file",
+    "upload_hint": "Supports: .txt .docx .pdf (max 10MB)",
+    "word_count": "Word Count",
+    "submit": "Analyze Text",
+    "analyzing": "Analyzing...",
+    "clear": "Clear",
+    "free_limit": "Free limit: 500 words"
+  },
+  "results": {
+    "title": "Analysis Results",
+    "human_score": "Human-Written",
+    "ai_score": "AI-Generated",
+    "dialect_label": "Detected Dialect",
+    "dialect_emirati": "Emirati",
+    "dialect_gulf": "Gulf Arabic",
+    "dialect_msa": "Modern Standard Arabic",
+    "dialect_mixed": "Mixed",
+    "dialect_other": "Unidentified",
+    "confidence": "Confidence Level",
+    "confidence_high": "High",
+    "confidence_medium": "Medium",
+    "confidence_low": "Low",
+    "summary_title": "Analysis Summary",
+    "macro_title": "Full-Text Macro Analysis",
+    "narrative_arc": "Narrative Arc",
+    "energy_curve": "Energy Curve",
+    "register_consistency": "Register Consistency",
+    "knowledge_depth": "Knowledge Depth",
+    "repetition_pattern": "Repetition Pattern",
+    "ai_like": "AI-like",
+    "human_like": "Human-like",
+    "mixed": "Mixed",
+    "flat": "Flat",
+    "varied": "Varied",
+    "consistent": "Consistent",
+    "shifting": "Shifting",
+    "uniform": "Uniform",
+    "uneven": "Uneven",
+    "red_flags_title": "AI Indicators",
+    "green_flags_title": "Human Writing Indicators",
+    "sentence_analysis": "Sentence Analysis",
+    "sentence_human": "Human",
+    "sentence_ai": "AI",
+    "sentence_mixed": "Mixed",
+    "sentence_reason": "Reason",
+    "breakdown": "Breakdown",
+    "save": "Save Result",
+    "new_analysis": "New Analysis",
+    "share": "Share"
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "welcome": "Welcome",
+    "history": "Analysis History",
+    "no_history": "No analyses yet",
+    "usage": "Usage This Month",
+    "plan": "Current Plan",
+    "upgrade": "Upgrade Plan",
+    "api_keys": "API Keys",
+    "documents_analyzed": "documents analyzed",
+    "date": "Date",
+    "score": "Score",
+    "dialect": "Dialect",
+    "view": "View",
+    "unlimited": "Unlimited",
+    "checks_remaining": "checks remaining this month"
+  },
+  "pricing": {
+    "title": "Pricing",
+    "subtitle": "Choose the right plan for you",
+    "monthly": "per month",
+    "currency": "AED",
+    "free": {
+      "name": "Free",
+      "price": "0",
+      "features": [
+        "3 checks per month",
+        "Max 500 words per check",
+        "Basic dialect detection",
+        "Instant results"
+      ],
+      "cta": "Start Free"
+    },
+    "pro": {
+      "name": "Pro",
+      "price": "49",
+      "price_raw": "49",
+      "features": [
+        "Unlimited checks",
+        "Max 5,000 words per check",
+        "Advanced dialect detection",
+        "API access",
+        "Full history",
+        "Priority support"
+      ],
+      "cta": "Subscribe Now",
+      "badge": "Most Popular"
+    },
+    "business": {
+      "name": "Business",
+      "price": "199",
+      "price_raw": "199",
+      "features": [
+        "Everything in Pro",
+        "Team seats",
+        "Bulk file upload",
+        "Detailed reports",
+        "Dedicated account manager",
+        "Guaranteed SLA"
+      ],
+      "cta": "Contact Us"
+    }
+  },
+  "auth": {
+    "login_title": "Sign In",
+    "signup_title": "Create New Account",
+    "email": "Email",
+    "password": "Password",
+    "full_name": "Full Name",
+    "login_btn": "Sign In",
+    "signup_btn": "Create Account",
+    "google": "Continue with Google",
+    "no_account": "Don't have an account?",
+    "have_account": "Already have an account?",
+    "forgot_password": "Forgot password?",
+    "or": "or"
+  },
+  "errors": {
+    "word_limit": "You've exceeded the word limit for the free plan. Please upgrade to continue.",
+    "monthly_limit": "You've reached your monthly free check limit.",
+    "file_type": "Unsupported file type.",
+    "file_size": "File size exceeds the limit.",
+    "generic": "An error occurred. Please try again.",
+    "empty_text": "Please enter text to analyze."
+  },
+  "how_it_works": {
+    "title": "How It Works",
+    "subtitle": "Three simple steps to get an accurate result",
+    "step1_num": "1",
+    "step1_title": "Paste Your Text",
+    "step1_desc": "Paste any Arabic text — Emirati, Gulf, MSA, or mixed. Free plan supports up to 500 words.",
+    "step2_num": "2",
+    "step2_title": "AI Analysis",
+    "step2_desc": "Claude Sonnet 4 analyzes the text across four levels: full-text structure, paragraphs, sentences, and Arabic vocabulary.",
+    "step3_num": "3",
+    "step3_title": "Detailed Results",
+    "step3_desc": "Get human-writing percentage, Emirati dialect detection, red & green flags, and per-sentence analysis.",
+    "try_now": "Try It Now"
+  },
+  "footer": {
+    "rights": "All rights reserved",
+    "privacy": "Privacy Policy",
+    "terms": "Terms of Service",
+    "contact": "Contact Us"
+  }
+}

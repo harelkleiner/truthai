@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useLocale } from "@/lib/locale-context";
 import { cn } from "@/lib/utils";
-import { Image as ImageIcon, Loader2, Save, Sparkles, Upload, Wand2 } from "lucide-react";
+import { Image as ImageIcon, Loader2, Save, Sparkles, Upload, Wand2, Pencil, Trash2, X, Eye, EyeOff } from "lucide-react";
 
 type Stats = {
   users: number;
@@ -22,6 +22,16 @@ type AdminArticle = {
   slug: string;
   published: boolean;
   created_at: string;
+};
+
+type EditingArticle = {
+  id: string;
+  title: string;
+  excerpt: string;
+  content: string;
+  coverImageUrl: string;
+  tags: string;
+  published: boolean;
 };
 
 type ChatMessage = {
@@ -51,6 +61,9 @@ export default function AdminPage() {
   const [finalReview, setFinalReview] = useState(false);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [editingArticle, setEditingArticle] = useState<EditingArticle | null>(null);
+  const [editSaving, setEditSaving] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [sourceLoading, setSourceLoading] = useState(false);
   const [chatPrompt, setChatPrompt] = useState("");
   const [chatLoading, setChatLoading] = useState(false);
@@ -216,6 +229,78 @@ export default function AdminPage() {
       return;
     }
     if (newBody) setContent((prev) => `${prev.trim()}\n\n${newBody}`.trim());
+  }
+
+  async function handleDelete(id: string) {
+    if (!confirm(locale === "ar" ? "هل أنت متأكد من حذف هذا المقال؟" : "Delete this article? This cannot be undone.")) return;
+    setDeletingId(id);
+    try {
+      const res = await fetch(`/api/admin/articles/${id}`, { method: "DELETE" });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data?.error ?? "Delete failed");
+      await loadAdminData().catch(() => {});
+    } catch (err: any) {
+      alert(err?.message ?? (locale === "ar" ? "فشل الحذف" : "Failed to delete"));
+    } finally {
+      setDeletingId(null);
+    }
+  }
+
+  function startEdit(a: AdminArticle) {
+    setEditingArticle({
+      id: a.id,
+      title: a.title,
+      excerpt: "",
+      content: "",
+      coverImageUrl: "",
+      tags: "",
+      published: a.published,
+    });
+    // Fetch full article data
+    fetch(`/api/admin/articles/${a.id}`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (data?.article) {
+          setEditingArticle({
+            id: a.id,
+            title: data.article.title ?? a.title,
+            excerpt: data.article.excerpt ?? "",
+            content: data.article.content ?? "",
+            coverImageUrl: data.article.cover_image_url ?? "",
+            tags: (data.article.tags ?? []).join(", "),
+            published: data.article.published ?? a.published,
+          });
+        }
+      })
+      .catch(() => {});
+  }
+
+  async function handleEditSave(e: React.FormEvent) {
+    e.preventDefault();
+    if (!editingArticle) return;
+    setEditSaving(true);
+    try {
+      const res = await fetch(`/api/admin/articles/${editingArticle.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: editingArticle.title,
+          excerpt: editingArticle.excerpt,
+          content: editingArticle.content,
+          coverImageUrl: editingArticle.coverImageUrl,
+          tags: editingArticle.tags.split(",").map((t) => t.trim()).filter(Boolean),
+          published: editingArticle.published,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data?.error ?? "Update failed");
+      setEditingArticle(null);
+      await loadAdminData().catch(() => {});
+    } catch (err: any) {
+      alert(err?.message ?? (locale === "ar" ? "فشل التحديث" : "Failed to update"));
+    } finally {
+      setEditSaving(false);
+    }
   }
 
   function handleImageFile(file: File) {
@@ -524,14 +609,33 @@ export default function AdminPage() {
                 <CardContent>
                   <div className="space-y-2">
                     {articles.map((a) => (
-                      <div key={a.id} className="flex items-center justify-between rounded-md border border-gray-100 px-3 py-2">
-                        <div>
-                          <p className="text-sm font-medium text-gray-900">{a.title}</p>
-                          <p className="text-xs text-gray-500">/{a.slug}</p>
+                      <div key={a.id} className="flex items-center justify-between gap-3 rounded-md border border-gray-100 px-3 py-2.5">
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm font-medium text-gray-900">{a.title}</p>
+                          <p className="text-xs text-gray-400">/{a.slug}</p>
                         </div>
-                        <span className={cn("text-xs font-semibold", a.published ? "text-green-600" : "text-amber-600")}>
-                          {a.published ? (locale === "ar" ? "منشور" : "Published") : (locale === "ar" ? "مسودة" : "Draft")}
-                        </span>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <span className={cn("text-xs font-semibold", a.published ? "text-green-600" : "text-amber-500")}>
+                            {a.published ? (locale === "ar" ? "منشور" : "Published") : (locale === "ar" ? "مسودة" : "Draft")}
+                          </span>
+                          <button
+                            onClick={() => startEdit(a)}
+                            className="rounded-md p-1.5 text-gray-400 hover:bg-blue-50 hover:text-blue-600 transition"
+                            title={locale === "ar" ? "تعديل" : "Edit"}
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                          </button>
+                          <button
+                            onClick={() => handleDelete(a.id)}
+                            disabled={deletingId === a.id}
+                            className="rounded-md p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-600 transition disabled:opacity-50"
+                            title={locale === "ar" ? "حذف" : "Delete"}
+                          >
+                            {deletingId === a.id
+                              ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                              : <Trash2 className="h-3.5 w-3.5" />}
+                          </button>
+                        </div>
                       </div>
                     ))}
                     {articles.length === 0 && (
@@ -540,6 +644,86 @@ export default function AdminPage() {
                   </div>
                 </CardContent>
               </Card>
+
+              {/* ── Edit article modal ── */}
+              {editingArticle && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+                  <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl bg-white shadow-2xl">
+                    <div className="flex items-center justify-between border-b border-gray-100 px-5 py-4">
+                      <h2 className="font-semibold text-gray-900">
+                        {locale === "ar" ? "تعديل المقال" : "Edit Article"}
+                      </h2>
+                      <button onClick={() => setEditingArticle(null)} className="rounded-md p-1 text-gray-400 hover:text-gray-600">
+                        <X className="h-5 w-5" />
+                      </button>
+                    </div>
+
+                    <form onSubmit={handleEditSave} className="space-y-3 p-5">
+                      <input
+                        className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-teal-500"
+                        placeholder={locale === "ar" ? "العنوان" : "Title"}
+                        value={editingArticle.title}
+                        onChange={(e) => setEditingArticle((prev) => prev && ({ ...prev, title: e.target.value }))}
+                        required
+                      />
+                      <input
+                        className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-teal-500"
+                        placeholder={locale === "ar" ? "ملخص قصير" : "Short excerpt"}
+                        value={editingArticle.excerpt}
+                        onChange={(e) => setEditingArticle((prev) => prev && ({ ...prev, excerpt: e.target.value }))}
+                      />
+                      <input
+                        className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-teal-500"
+                        placeholder={locale === "ar" ? "رابط صورة الغلاف" : "Cover image URL"}
+                        value={editingArticle.coverImageUrl}
+                        onChange={(e) => setEditingArticle((prev) => prev && ({ ...prev, coverImageUrl: e.target.value }))}
+                      />
+                      <input
+                        className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-teal-500"
+                        placeholder={locale === "ar" ? "الوسوم (tag1, tag2)" : "Tags (tag1, tag2)"}
+                        value={editingArticle.tags}
+                        onChange={(e) => setEditingArticle((prev) => prev && ({ ...prev, tags: e.target.value }))}
+                      />
+                      <textarea
+                        className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-teal-500"
+                        placeholder={locale === "ar" ? "محتوى المقال" : "Article content"}
+                        value={editingArticle.content}
+                        onChange={(e) => setEditingArticle((prev) => prev && ({ ...prev, content: e.target.value }))}
+                        rows={14}
+                        required
+                      />
+
+                      <div className="flex items-center gap-4">
+                        <button
+                          type="button"
+                          onClick={() => setEditingArticle((prev) => prev && ({ ...prev, published: !prev.published }))}
+                          className={cn(
+                            "flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-semibold transition",
+                            editingArticle.published
+                              ? "bg-green-50 text-green-700 hover:bg-green-100"
+                              : "bg-amber-50 text-amber-700 hover:bg-amber-100"
+                          )}
+                        >
+                          {editingArticle.published
+                            ? <><Eye className="h-3.5 w-3.5" />{locale === "ar" ? "منشور" : "Published"}</>
+                            : <><EyeOff className="h-3.5 w-3.5" />{locale === "ar" ? "مسودة" : "Draft"}</>}
+                        </button>
+                      </div>
+
+                      <div className="flex gap-3 pt-2">
+                        <Button type="submit" disabled={editSaving} className="gap-2">
+                          {editSaving
+                            ? <><Loader2 className="h-4 w-4 animate-spin" />{locale === "ar" ? "جار الحفظ..." : "Saving..."}</>
+                            : <><Save className="h-4 w-4" />{locale === "ar" ? "حفظ التغييرات" : "Save changes"}</>}
+                        </Button>
+                        <Button type="button" variant="outline" onClick={() => setEditingArticle(null)}>
+                          {locale === "ar" ? "إلغاء" : "Cancel"}
+                        </Button>
+                      </div>
+                    </form>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>

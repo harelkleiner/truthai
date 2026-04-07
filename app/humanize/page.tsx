@@ -7,8 +7,7 @@ import { Navbar } from "@/components/layout/navbar";
 import { Footer } from "@/components/layout/footer";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
-import { Loader2, AlertCircle, Copy, Check, Lock, Sparkles } from "lucide-react";
+import { Loader2, AlertCircle, Copy, Check, Sparkles } from "lucide-react";
 import { cn, countWords, toEasternArabic } from "@/lib/utils";
 import { getHumanizeLimit } from "@/lib/plan";
 
@@ -31,16 +30,21 @@ function HumanizeContent() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
-  const [authLoading, setAuthLoading] = useState(true);
-  const [userPlan, setUserPlan] = useState<"free" | "starter" | "pro" | "business">("free");
+  const [userPlan, setUserPlan] = useState<"free" | "starter" | "pro" | "business" | null>(null);
+  const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
   const [humanizationsUsed, setHumanizationsUsed] = useState(0);
 
   useEffect(() => {
     (async () => {
       try {
         const res = await fetch("/api/me");
-        if (!res.ok) { router.replace("/login"); return; }
+        if (!res.ok) {
+          setIsLoggedIn(false);
+          setUserPlan(null);
+          return;
+        }
         const data = await res.json();
+        setIsLoggedIn(true);
         setUserPlan(data.plan ?? "free");
         const resetAt = data?.humanizations_reset_at ? new Date(data.humanizations_reset_at) : null;
         const now = new Date();
@@ -48,22 +52,31 @@ function HumanizeContent() {
           resetAt.getUTCFullYear() === now.getUTCFullYear() &&
           resetAt.getUTCMonth() === now.getUTCMonth();
         setHumanizationsUsed(sameMonth ? (data?.humanizations_used_this_month ?? 0) : 0);
-      } catch { router.replace("/login"); }
-      finally { setAuthLoading(false); }
+      } catch {
+        setIsLoggedIn(false);
+        setUserPlan(null);
+      }
     })();
-  }, [router]);
+  }, []);
 
-  const humanizeLimit = getHumanizeLimit(userPlan);
-  const canHumanize = humanizeLimit === null || humanizeLimit > 0;
-  const remaining = humanizeLimit === null ? null : Math.max(humanizeLimit - humanizationsUsed, 0);
+  const humanizeLimit = userPlan ? getHumanizeLimit(userPlan) : 0;
+  const canHumanize = isLoggedIn && userPlan && (humanizeLimit === null || humanizeLimit > 0);
+  const remaining = humanizeLimit === null ? null : Math.max((humanizeLimit ?? 0) - humanizationsUsed, 0);
 
   async function handleHumanize() {
     if (!text.trim()) { setError(t.errors.empty_text); return; }
-    if (!canHumanize) return;
+
+    // Not logged in or free plan -> send to pricing
+    if (!isLoggedIn || !canHumanize) {
+      router.push("/#pricing");
+      return;
+    }
+
     if (remaining !== null && remaining <= 0) {
       setError(locale === "ar" ? "وصلت للحد الشهري للأنسنة" : "Monthly humanization limit reached");
       return;
     }
+
     setError(null);
     setLoading(true);
     setResult(null);
@@ -75,7 +88,7 @@ function HumanizeContent() {
       });
       const data = await res.json();
       if (!res.ok) {
-        if (data?.code === "auth_required") { router.push("/login"); return; }
+        if (data?.code === "auth_required") { router.push("/#pricing"); return; }
         if (data?.code === "plan_not_allowed") { router.push("/#pricing"); return; }
         throw new Error(data?.error ?? "Humanization failed");
       }
@@ -107,34 +120,10 @@ function HumanizeContent() {
             <h1 className="text-2xl font-bold text-gray-900">{t.humanize.title}</h1>
           </div>
           <p className={cn("mb-8 text-sm text-gray-500", dir === "rtl" ? "text-right" : "text-left")}>
-            {canHumanize
-              ? remaining === null
-                ? t.dashboard.unlimited
-                : locale === "ar"
-                  ? `${toEasternArabic(String(remaining))} ${t.humanize.remaining}`
-                  : `${remaining} ${t.humanize.remaining}`
-              : t.humanize.upgrade_cta}
+            {t.humanize.description}
           </p>
 
-          {authLoading && (
-            <Card>
-              <CardContent className="py-10 flex justify-center">
-                <Loader2 className="h-5 w-5 animate-spin text-teal-600" />
-              </CardContent>
-            </Card>
-          )}
-
-          {!authLoading && !canHumanize && (
-            <Card>
-              <CardContent className="py-12 flex flex-col items-center gap-4">
-                <Lock className="h-10 w-10 text-gray-300" />
-                <p className="text-gray-600 font-medium">{t.humanize.upgrade_cta}</p>
-                <Button onClick={() => router.push("/#pricing")}>{t.humanize.upgrade_btn}</Button>
-              </CardContent>
-            </Card>
-          )}
-
-          {!authLoading && canHumanize && !result && (
+          {!result && (
             <Card>
               <CardContent className="pt-6">
                 <label className={cn("mb-2 block text-sm font-medium text-gray-700", dir === "rtl" ? "text-right" : "text-left")}>
@@ -148,10 +137,19 @@ function HumanizeContent() {
                   rows={10}
                   className="w-full rounded-xl border border-gray-200 bg-white p-4 font-arabic text-base leading-relaxed resize-none text-right placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500"
                 />
-                <div className={cn("mt-1.5 text-xs text-gray-400", dir === "rtl" ? "text-right" : "text-left")}>
-                  {locale === "ar"
-                    ? `${toEasternArabic(wordCount)} ${t.analyze.word_count}`
-                    : `${wordCount} ${t.analyze.word_count}`}
+                <div className={cn("mt-1.5 flex items-center justify-between text-xs text-gray-400", dir === "rtl" ? "flex-row-reverse" : "")}>
+                  <span>
+                    {locale === "ar"
+                      ? `${toEasternArabic(wordCount)} ${t.analyze.word_count}`
+                      : `${wordCount} ${t.analyze.word_count}`}
+                  </span>
+                  {canHumanize && remaining !== null && (
+                    <span>
+                      {locale === "ar"
+                        ? `${toEasternArabic(String(remaining))} ${t.humanize.remaining}`
+                        : `${remaining} ${t.humanize.remaining}`}
+                    </span>
+                  )}
                 </div>
 
                 {error && (
@@ -177,7 +175,7 @@ function HumanizeContent() {
             </Card>
           )}
 
-          {!authLoading && canHumanize && result && (
+          {result && (
             <div className="space-y-5">
               <Card>
                 <CardContent className="pt-6">

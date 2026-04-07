@@ -596,7 +596,7 @@ export default function AnalyzePage() {
               )}
 
               {/* Humanize CTA */}
-              {result.ai_pct >= 30 && (
+              {(
                 <Card className="border-teal-200 bg-gradient-to-r from-teal-50 to-white">
                   <CardContent className="py-5">
                     <div className={cn("flex items-center justify-between gap-4 flex-wrap", dir === "rtl" ? "flex-row-reverse" : "")}>

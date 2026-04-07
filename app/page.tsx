@@ -614,7 +614,7 @@ export default function HomePage() {
           { text: ar ? "حتى ٥٠٠ كلمة لكل فحص" : "Up to 500 words per check", included: true },
           { text: ar ? "كشف اللهجة الأساسي" : "Basic dialect detection", included: true },
           { text: ar ? "نتائج فورية" : "Instant results", included: true },
-          { text: ar ? "سجل التحليلات" : "Analysis history", included: false },
+          { text: ar ? "أنسنة النص" : "Text humanization", included: false },
           { text: ar ? "رفع الملفات" : "File upload", included: false },
           { text: ar ? "دعم أولوي" : "Priority support", included: false },
         ];
@@ -622,27 +622,27 @@ export default function HomePage() {
           { text: ar ? "٥٠ فحصاً شهرياً" : "50 checks / month", included: true },
           { text: ar ? "حتى ٢٬٠٠٠ كلمة لكل فحص" : "Up to 2,000 words per check", included: true },
           { text: ar ? "كشف لهجة متقدم" : "Advanced dialect detection", included: true },
+          { text: ar ? "٢٠ أنسنة شهرياً" : "20 humanizations / month", included: true },
           { text: ar ? "سجل كامل للتحليلات" : "Full analysis history", included: true },
           { text: ar ? "درجة صحة المحتوى" : "Authenticity scoring", included: true },
-          { text: ar ? "رفع الملفات" : "File upload", included: false },
           { text: ar ? "دعم أولوي" : "Priority support", included: false },
         ];
         const proFeatures: PlanFeature[] = [
           { text: ar ? "فحوصات غير محدودة" : "Unlimited checks", included: true },
           { text: ar ? "كلمات غير محدودة لكل فحص" : "Unlimited words per check", included: true },
-          { text: ar ? "كشف لهجة متقدم" : "Advanced dialect detection", included: true },
+          { text: ar ? "١٠٠ أنسنة شهرياً" : "100 humanizations / month", included: true },
           { text: ar ? "رفع الملفات (٥٠ ملف / شهر)" : "50 file uploads / month", included: true },
-          { text: ar ? "درجة صحة المحتوى" : "Authenticity scoring", included: true },
+          { text: ar ? "كشف لهجة متقدم" : "Advanced dialect detection", included: true },
           { text: ar ? "دعم أولوي" : "Priority support", included: true },
           { text: ar ? "مقاعد الفريق" : "Team seats", included: false },
         ];
         const bizFeatures: PlanFeature[] = [
           { text: ar ? "فحوصات غير محدودة" : "Unlimited checks", included: true },
           { text: ar ? "كلمات غير محدودة" : "Unlimited words", included: true },
+          { text: ar ? "أنسنة غير محدودة" : "Unlimited humanizations", included: true },
           { text: ar ? "رفع ملفات غير محدود" : "Unlimited file uploads", included: true },
           { text: ar ? "تقارير PDF بعلامتك التجارية" : "White-label PDF reports", included: true },
           { text: ar ? "حتى ١٠ مقاعد للفريق" : "Up to 10 team seats", included: true },
-          { text: ar ? "درجة صحة المحتوى" : "Authenticity scoring", included: true },
           { text: ar ? "مدير حساب مخصص" : "Dedicated account manager", included: true },
         ];
         return (

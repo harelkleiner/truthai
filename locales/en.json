@@ -158,6 +158,23 @@
       "cta": "Contact Us"
     }
   },
+  "humanize": {
+    "title": "Humanize Text",
+    "description": "Rewrite AI-generated text to sound naturally human-written in Arabic",
+    "paste_label": "Paste text to humanize",
+    "paste_placeholder": "Paste the AI-generated Arabic text you want to humanize...",
+    "submit": "Humanize Text",
+    "humanizing": "Humanizing...",
+    "result_title": "Humanized Text",
+    "copy": "Copy",
+    "copied": "Copied!",
+    "try_again": "Humanize Again",
+    "new_text": "New Text",
+    "remaining": "humanizations remaining this month",
+    "upgrade_cta": "Upgrade to humanize your text",
+    "upgrade_btn": "View Plans",
+    "post_analysis_cta": "Humanize This Text"
+  },
   "auth": {
     "login_title": "Sign In",
     "signup_title": "Create New Account",

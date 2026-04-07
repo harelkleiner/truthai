@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { Upload, Loader2, X, FileText, AlertCircle, ChevronDown, ChevronUp, Lock } from "lucide-react";
+import { Upload, Loader2, X, FileText, AlertCircle, ChevronDown, ChevronUp, Lock, Sparkles } from "lucide-react";
 import { cn, countWords, toEasternArabic } from "@/lib/utils";
 import type { DetectionResult, MacroSignals } from "@/lib/detection/detector";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from "recharts";
@@ -590,6 +590,41 @@ export default function AnalyzePage() {
                         <span className="h-2.5 w-2.5 rounded-full bg-amber-400 inline-block" />
                         {t.results.sentence_mixed}
                       </span>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Humanize CTA */}
+              {result.ai_pct >= 30 && (
+                <Card className="border-teal-200 bg-gradient-to-r from-teal-50 to-white">
+                  <CardContent className="py-5">
+                    <div className={cn("flex items-center justify-between gap-4 flex-wrap", dir === "rtl" ? "flex-row-reverse" : "")}>
+                      <div className={cn("flex items-center gap-3", dir === "rtl" ? "flex-row-reverse" : "")}>
+                        <Sparkles className="h-5 w-5 text-teal-600 shrink-0" />
+                        <div>
+                          <p className={cn("font-semibold text-gray-900 text-sm", dir === "rtl" ? "text-right" : "")}>
+                            {t.humanize.post_analysis_cta}
+                          </p>
+                          <p className={cn("text-xs text-gray-500", dir === "rtl" ? "text-right" : "")}>
+                            {t.humanize.description}
+                          </p>
+                        </div>
+                      </div>
+                      <Button
+                        size="sm"
+                        onClick={() => {
+                          if (userPlan === "free") {
+                            router.push("/#pricing");
+                          } else {
+                            router.push(`/humanize?text=${encodeURIComponent(text)}`);
+                          }
+                        }}
+                      >
+                        {userPlan === "free"
+                          ? (locale === "ar" ? "ترقية الخطة" : "Upgrade Plan")
+                          : <><Sparkles className="h-3.5 w-3.5" /> {t.humanize.submit}</>}
+                      </Button>
                     </div>
                   </CardContent>
                 </Card>

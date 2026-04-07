@@ -21,6 +21,13 @@ export const PLAN_MONTHLY_UPLOAD_LIMIT: Record<AppPlan, number | null> = {
   business: null,
 };
 
+export const PLAN_MONTHLY_HUMANIZE_LIMIT: Record<AppPlan, number | null> = {
+  free: 0,
+  starter: 20,
+  pro: 100,
+  business: null,
+};
+
 export function normalizePlan(plan: string | null | undefined): AppPlan {
   if (plan === "starter" || plan === "pro" || plan === "business") return plan;
   return "free";
@@ -36,4 +43,8 @@ export function getWordLimit(plan: AppPlan): number | null {
 
 export function getUploadLimit(plan: AppPlan): number | null {
   return PLAN_MONTHLY_UPLOAD_LIMIT[plan];
+}
+
+export function getHumanizeLimit(plan: AppPlan): number | null {
+  return PLAN_MONTHLY_HUMANIZE_LIMIT[plan];
 }

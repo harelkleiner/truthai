@@ -24,7 +24,7 @@ export async function GET() {
 
     const { data: profile } = await supabase
       .from("users")
-      .select("plan, checks_used_this_month, checks_reset_at, uploads_used_this_month, uploads_reset_at, full_name")
+      .select("plan, checks_used_this_month, checks_reset_at, uploads_used_this_month, uploads_reset_at, humanizations_used_this_month, humanizations_reset_at, full_name")
       .eq("id", user.id)
       .single();
 
@@ -37,6 +37,8 @@ export async function GET() {
       checks_reset_at: profile?.checks_reset_at ?? null,
       uploads_used_this_month: profile?.uploads_used_this_month ?? 0,
       uploads_reset_at: profile?.uploads_reset_at ?? null,
+      humanizations_used_this_month: profile?.humanizations_used_this_month ?? 0,
+      humanizations_reset_at: profile?.humanizations_reset_at ?? null,
       is_admin: isAdminEmail(user.email),
     });
   } catch {

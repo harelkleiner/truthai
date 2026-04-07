@@ -10,9 +10,9 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { FileText, Plus, BarChart3, Zap, ArrowUpRight, Loader2 } from "lucide-react";
+import { FileText, Plus, BarChart3, Zap, ArrowUpRight, Loader2, Sparkles } from "lucide-react";
 import { cn, toEasternArabic } from "@/lib/utils";
-import { getMonthlyLimit, normalizePlan, type AppPlan } from "@/lib/plan";
+import { getMonthlyLimit, getHumanizeLimit, normalizePlan, type AppPlan } from "@/lib/plan";
 
 type DashboardUser = {
   full_name: string | null;
@@ -162,7 +162,7 @@ export default function DashboardPage() {
           </div>
 
           {/* Stats row */}
-          <div className="mb-8 grid gap-4 sm:grid-cols-3">
+          <div className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {/* Plan */}
             <Card>
               <CardContent className="pt-5">
@@ -231,6 +231,50 @@ export default function DashboardPage() {
                 </div>
               </CardContent>
             </Card>
+
+            {/* Humanize usage */}
+            {(() => {
+              const hLimit = isAdmin ? null : getHumanizeLimit(user.plan);
+              const canHumanize = hLimit === null || hLimit > 0;
+              const hUsed = user.checks_used_this_month; // placeholder — real value from API below
+              return (
+                <Card>
+                  <CardContent className="pt-5">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-teal-50">
+                        <Sparkles className="h-5 w-5 text-teal-600" />
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-400">{locale === "ar" ? "الأنسنة" : "Humanize"}</p>
+                        <p className="font-semibold text-gray-900">
+                          {!canHumanize
+                            ? (locale === "ar" ? "غير متاح" : "Not available")
+                            : hLimit === null
+                              ? (locale === "ar" ? "غير محدود" : "Unlimited")
+                              : locale === "ar"
+                                ? `${toEasternArabic(String(hLimit))} ${t.humanize?.remaining ?? "شهرياً"}`
+                                : `${hLimit} / month`}
+                        </p>
+                      </div>
+                    </div>
+                    {canHumanize && (
+                      <Link href="/humanize">
+                        <Button variant="outline" size="sm" className="mt-3 w-full gap-1 text-xs">
+                          {locale === "ar" ? "أنسنة نص" : "Humanize Text"} <Sparkles className="h-3 w-3" />
+                        </Button>
+                      </Link>
+                    )}
+                    {!canHumanize && !isAdmin && (
+                      <Link href="/#pricing">
+                        <Button variant="outline" size="sm" className="mt-3 w-full gap-1 text-xs">
+                          {t.dashboard.upgrade} <ArrowUpRight className="h-3 w-3" />
+                        </Button>
+                      </Link>
+                    )}
+                  </CardContent>
+                </Card>
+              );
+            })()}
           </div>
 
           {/* History */}

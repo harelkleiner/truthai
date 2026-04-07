@@ -161,6 +161,27 @@ begin
 end;
 $$;
 
+-- Humanization columns (run this migration if table already exists)
+-- alter table public.users add column if not exists humanizations_used_this_month int not null default 0;
+-- alter table public.users add column if not exists humanizations_reset_at timestamptz not null default date_trunc('month', now());
+
+-- Function: increment monthly humanization counter (call from API)
+create or replace function public.increment_humanizations_used(uid uuid)
+returns void language plpgsql security definer as $$
+begin
+  -- Reset if month changed
+  update public.users
+  set humanizations_used_this_month = 0,
+      humanizations_reset_at = date_trunc('month', now())
+  where id = uid and humanizations_reset_at < date_trunc('month', now());
+
+  -- Increment
+  update public.users
+  set humanizations_used_this_month = humanizations_used_this_month + 1
+  where id = uid;
+end;
+$$;
+
 -- Function: increment monthly file upload counter (call from API)
 create or replace function public.increment_uploads_used(uid uuid)
 returns void language plpgsql security definer as $$

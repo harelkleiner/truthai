@@ -17,6 +17,7 @@ export function Navbar() {
   const navLinks = [
     { href: "/", label: t.nav.home },
     { href: "/analyze", label: t.nav.analyze },
+    { href: "/humanize", label: locale === "ar" ? "أنسنة النص" : "Humanize" },
     { href: "/articles", label: locale === "ar" ? "المقالات" : "Articles" },
     { href: "/#pricing", label: t.nav.pricing },
   ];

@@ -9,10 +9,12 @@ create table public.users (
   id uuid references auth.users on delete cascade primary key,
   email text not null,
   full_name text,
-  plan text not null default 'free' check (plan in ('free', 'pro', 'business')),
+  plan text not null default 'free' check (plan in ('free', 'starter', 'pro', 'business')),
   stripe_customer_id text,
   checks_used_this_month int not null default 0,
   checks_reset_at timestamptz not null default date_trunc('month', now()),
+  uploads_used_this_month int not null default 0,
+  uploads_reset_at timestamptz not null default date_trunc('month', now()),
   created_at timestamptz not null default now()
 );
 
@@ -83,7 +85,7 @@ create table public.subscriptions (
   id uuid primary key default uuid_generate_v4(),
   user_id uuid references public.users(id) on delete cascade not null unique,
   stripe_subscription_id text not null,
-  plan text not null check (plan in ('pro', 'business')),
+  plan text not null check (plan in ('starter', 'pro', 'business')),
   status text not null,
   current_period_end timestamptz not null,
   created_at timestamptz not null default now(),
@@ -158,6 +160,45 @@ begin
   where id = uid;
 end;
 $$;
+
+-- Function: increment monthly file upload counter (call from API)
+create or replace function public.increment_uploads_used(uid uuid)
+returns void language plpgsql security definer as $$
+begin
+  -- Reset if month changed
+  update public.users
+  set uploads_used_this_month = 0,
+      uploads_reset_at = date_trunc('month', now())
+  where id = uid and uploads_reset_at < date_trunc('month', now());
+
+  -- Increment
+  update public.users
+  set uploads_used_this_month = uploads_used_this_month + 1
+  where id = uid;
+end;
+$$;
+
+-- Articles table (public blog/news)
+create table public.articles (
+  id uuid primary key default uuid_generate_v4(),
+  slug text not null unique,
+  title text not null,
+  excerpt text not null default '',
+  content text not null,
+  cover_image_url text,
+  tags text[] not null default '{}',
+  published boolean not null default true,
+  published_at timestamptz,
+  created_by uuid references public.users(id) on delete set null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+alter table public.articles enable row level security;
+
+create policy "Anyone can read published articles"
+  on public.articles for select
+  using (published = true);
 
 -- Contact messages table
 create table public.contact_messages (

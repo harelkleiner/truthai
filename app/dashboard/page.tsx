@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { useLocale } from "@/lib/locale-context";
 import { Navbar } from "@/components/layout/navbar";
 import { Footer } from "@/components/layout/footer";
@@ -8,21 +10,24 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { FileText, Plus, Key, Zap, ArrowUpRight } from "lucide-react";
+import { FileText, Plus, BarChart3, Zap, ArrowUpRight, Loader2 } from "lucide-react";
 import { cn, toEasternArabic } from "@/lib/utils";
+import { getMonthlyLimit, normalizePlan, type AppPlan } from "@/lib/plan";
 
-// Mock data — replace with Supabase query
-const MOCK_USER = {
-  full_name: "أحمد الشمري",
-  plan: "free" as "free" | "pro" | "business",
-  checks_used: 2,
-  checks_limit: 3,
+type DashboardUser = {
+  full_name: string | null;
+  plan: AppPlan;
+  checks_used_this_month: number;
 };
 
-const MOCK_HISTORY = [
-  { id: "1", title: "مقال عن التقنية", date: "2026-03-18", human_pct: 78, ai_pct: 22, dialect: "emirati" },
-  { id: "2", title: "تقرير أكاديمي", date: "2026-03-15", human_pct: 34, ai_pct: 66, dialect: "msa" },
-];
+type HistoryRow = {
+  id: string;
+  title: string;
+  date: string;
+  human_pct: number;
+  ai_pct: number;
+  dialect: string;
+};
 
 const DIALECT_LABELS: Record<string, Record<string, string>> = {
   ar: { emirati: "إماراتية", gulf: "خليجية", msa: "فصحى", mixed: "مختلطة", other: "غير محددة" },
@@ -31,18 +36,122 @@ const DIALECT_LABELS: Record<string, Record<string, string>> = {
 
 export default function DashboardPage() {
   const { t, locale, dir } = useLocale();
-  const usagePct = (MOCK_USER.checks_used / MOCK_USER.checks_limit) * 100;
+  const router = useRouter();
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [user, setUser] = useState<DashboardUser | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [history, setHistory] = useState<HistoryRow[]>([]);
+  const [totalAnalyses, setTotalAnalyses] = useState(0);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const { createClient } = await import("@/lib/supabase");
+        const sb = createClient();
+
+        const { data: { user: authUser } } = await sb.auth.getUser();
+        if (!authUser) {
+          router.replace("/login");
+          return;
+        }
+
+        const meRes = await fetch("/api/me");
+        if (meRes.ok) {
+          const me = await meRes.json();
+          setIsAdmin(!!me.is_admin);
+        }
+
+        const { data: profile, error: profileError } = await sb
+          .from("users")
+          .select("full_name, plan, checks_used_this_month, checks_reset_at")
+          .eq("id", authUser.id)
+          .single();
+
+        if (profileError || !profile) {
+          setError(locale === "ar" ? "تعذر تحميل بيانات الحساب" : "Could not load account data");
+          return;
+        }
+
+        const checksResetAt = profile.checks_reset_at ? new Date(profile.checks_reset_at) : null;
+        const now = new Date();
+        const sameMonth =
+          !!checksResetAt &&
+          checksResetAt.getUTCFullYear() === now.getUTCFullYear() &&
+          checksResetAt.getUTCMonth() === now.getUTCMonth();
+
+        const normalizedPlan = normalizePlan(profile.plan);
+        setUser({
+          full_name: profile.full_name,
+          plan: normalizedPlan,
+          checks_used_this_month: sameMonth ? profile.checks_used_this_month ?? 0 : 0,
+        });
+
+        const { data: docs } = await sb
+          .from("documents")
+          .select("id, title, created_at, results(human_pct, ai_pct, dialect)")
+          .eq("user_id", authUser.id)
+          .order("created_at", { ascending: false })
+          .limit(20);
+
+        const { count } = await sb
+          .from("documents")
+          .select("id", { count: "exact", head: true })
+          .eq("user_id", authUser.id);
+        setTotalAnalyses(count ?? 0);
+
+        const parsed: HistoryRow[] = (docs ?? []).map((doc: any) => {
+          const result = Array.isArray(doc.results) ? doc.results[0] : doc.results;
+          return {
+            id: doc.id,
+            title: doc.title ?? "Untitled",
+            date: String(doc.created_at ?? "").slice(0, 10),
+            human_pct: result?.human_pct ?? 0,
+            ai_pct: result?.ai_pct ?? 0,
+            dialect: result?.dialect ?? "other",
+          };
+        });
+        setHistory(parsed);
+      } catch {
+        setError(locale === "ar" ? "حدث خطأ أثناء تحميل البيانات" : "Failed to load your dashboard");
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, [locale, router]);
+
+  const checksLimit = user ? (isAdmin ? null : getMonthlyLimit(user.plan)) : null;
+  const checksUsed = user?.checks_used_this_month ?? 0;
+  const usagePct = checksLimit ? Math.min((checksUsed / checksLimit) * 100, 100) : 0;
+  const checksRemaining = checksLimit === null ? null : Math.max(checksLimit - checksUsed, 0);
+  const displayName = user?.full_name || (locale === "ar" ? "مستخدم" : "User");
 
   return (
     <div className="flex min-h-screen flex-col">
       <Navbar />
       <main className="flex-1 bg-gray-50 py-10">
         <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
+          {loading && (
+            <Card className="mb-8">
+              <CardContent className="py-10 flex justify-center">
+                <Loader2 className="h-5 w-5 animate-spin text-teal-600" />
+              </CardContent>
+            </Card>
+          )}
+
+          {error && (
+            <Card className="mb-8 border-red-100">
+              <CardContent className="py-4 text-sm text-red-700">{error}</CardContent>
+            </Card>
+          )}
+
+          {!loading && !error && user && (
+            <>
           {/* Header */}
           <div className={cn("mb-8 flex items-start justify-between gap-4 flex-wrap", dir === "rtl" ? "flex-row-reverse" : "")}>
             <div>
               <h1 className="text-2xl font-bold text-gray-900">{t.dashboard.title}</h1>
-              <p className="text-gray-500">{t.dashboard.welcome}, {MOCK_USER.full_name}</p>
+              <p className="text-gray-500">{t.dashboard.welcome}, {displayName}</p>
             </div>
             <Link href="/analyze">
               <Button className="gap-2">
@@ -63,10 +172,10 @@ export default function DashboardPage() {
                   </div>
                   <div>
                     <p className="text-xs text-gray-400">{t.dashboard.plan}</p>
-                    <p className="font-semibold capitalize text-gray-900">{MOCK_USER.plan}</p>
+                    <p className="font-semibold capitalize text-gray-900">{user.plan}</p>
                   </div>
                 </div>
-                {MOCK_USER.plan === "free" && (
+                {user.plan === "free" && !isAdmin && (
                   <Link href="/#pricing">
                     <Button variant="outline" size="sm" className="mt-3 w-full gap-1 text-xs">
                       {t.dashboard.upgrade} <ArrowUpRight className="h-3 w-3" />
@@ -86,43 +195,40 @@ export default function DashboardPage() {
                   <div>
                     <p className="text-xs text-gray-400">{t.dashboard.usage}</p>
                     <p className="font-semibold text-gray-900">
-                      {locale === "ar"
-                        ? `${toEasternArabic(MOCK_USER.checks_used)} / ${toEasternArabic(MOCK_USER.checks_limit)}`
-                        : `${MOCK_USER.checks_used} / ${MOCK_USER.checks_limit}`}
+                      {checksLimit === null
+                        ? t.dashboard.unlimited
+                        : locale === "ar"
+                          ? `${toEasternArabic(String(checksUsed))} / ${toEasternArabic(String(checksLimit))}`
+                          : `${checksUsed} / ${checksLimit}`}
                       {" "}{t.dashboard.documents_analyzed}
                     </p>
                   </div>
                 </div>
-                <Progress value={usagePct} indicatorClassName={usagePct >= 100 ? "bg-red-500" : undefined} />
+                {checksLimit !== null && (
+                  <Progress value={usagePct} indicatorClassName={usagePct >= 100 ? "bg-red-500" : undefined} />
+                )}
                 <p className="mt-1.5 text-xs text-gray-400">
-                  {MOCK_USER.plan === "free"
-                    ? `${locale === "ar" ? toEasternArabic(MOCK_USER.checks_limit - MOCK_USER.checks_used) : MOCK_USER.checks_limit - MOCK_USER.checks_used} ${t.dashboard.checks_remaining}`
+                  {checksLimit !== null
+                    ? `${locale === "ar" ? toEasternArabic(String(checksRemaining ?? 0)) : checksRemaining ?? 0} ${t.dashboard.checks_remaining}`
                     : t.dashboard.unlimited}
                 </p>
               </CardContent>
             </Card>
 
-            {/* API Keys */}
+            {/* Total analyses */}
             <Card>
               <CardContent className="pt-5">
                 <div className="flex items-center gap-3">
                   <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-purple-50">
-                    <Key className="h-5 w-5 text-purple-600" />
+                    <BarChart3 className="h-5 w-5 text-purple-600" />
                   </div>
                   <div>
-                    <p className="text-xs text-gray-400">{t.dashboard.api_keys}</p>
-                    {MOCK_USER.plan === "free" ? (
-                      <Badge variant="secondary" className="mt-0.5 text-xs">Pro+</Badge>
-                    ) : (
-                      <p className="font-semibold text-gray-900">1 {locale === "ar" ? "مفتاح" : "key"}</p>
-                    )}
+                    <p className="text-xs text-gray-400">{locale === "ar" ? "إجمالي التحليلات" : "Total Analyses"}</p>
+                    <p className="font-semibold text-gray-900">
+                      {locale === "ar" ? toEasternArabic(String(totalAnalyses)) : totalAnalyses}
+                    </p>
                   </div>
                 </div>
-                {MOCK_USER.plan !== "free" && (
-                  <Button variant="outline" size="sm" className="mt-3 w-full text-xs">
-                    {locale === "ar" ? "إدارة المفاتيح" : "Manage Keys"}
-                  </Button>
-                )}
               </CardContent>
             </Card>
           </div>
@@ -133,7 +239,7 @@ export default function DashboardPage() {
               <CardTitle>{t.dashboard.history}</CardTitle>
             </CardHeader>
             <CardContent>
-              {MOCK_HISTORY.length === 0 ? (
+              {history.length === 0 ? (
                 <div className="py-12 text-center text-gray-400">
                   <FileText className="mx-auto mb-3 h-10 w-10 opacity-30" />
                   <p>{t.dashboard.no_history}</p>
@@ -154,7 +260,7 @@ export default function DashboardPage() {
                       </tr>
                     </thead>
                     <tbody>
-                      {MOCK_HISTORY.map((doc) => (
+                      {history.map((doc) => (
                         <tr key={doc.id} className="border-b border-gray-50 hover:bg-gray-50 transition-colors">
                           <td className="py-3 font-medium text-gray-800">{doc.title}</td>
                           <td className="py-3 text-gray-500">{doc.date}</td>
@@ -187,6 +293,8 @@ export default function DashboardPage() {
               )}
             </CardContent>
           </Card>
+            </>
+          )}
         </div>
       </main>
       <Footer />

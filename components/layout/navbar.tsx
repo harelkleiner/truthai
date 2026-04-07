@@ -4,18 +4,65 @@ import Link from "next/link";
 import { useLocale } from "@/lib/locale-context";
 import { Button } from "@/components/ui/button";
 import { Menu, X, Globe } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 
 export function Navbar() {
   const { t, locale, setLocale, dir } = useLocale();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [authReady, setAuthReady] = useState(false);
 
   const navLinks = [
     { href: "/", label: t.nav.home },
     { href: "/analyze", label: t.nav.analyze },
+    { href: "/articles", label: locale === "ar" ? "المقالات" : "Articles" },
     { href: "/#pricing", label: t.nav.pricing },
   ];
+
+  useEffect(() => {
+    let mounted = true;
+    let unsubscribe: (() => void) | undefined;
+
+    (async () => {
+      try {
+        const { createClient } = await import("@/lib/supabase");
+        const sb = createClient();
+        const { data: { user } } = await sb.auth.getUser();
+        if (mounted) setIsAuthenticated(!!user);
+        if (user && mounted) {
+          const meRes = await fetch("/api/me");
+          if (meRes.ok) {
+            const me = await meRes.json();
+            setIsAdmin(!!me.is_admin);
+          } else {
+            setIsAdmin(false);
+          }
+        }
+
+        const { data } = sb.auth.onAuthStateChange((_event, session) => {
+          if (mounted) setIsAuthenticated(!!session?.user);
+          if (!session?.user && mounted) setIsAdmin(false);
+        });
+        unsubscribe = () => data.subscription.unsubscribe();
+      } finally {
+        if (mounted) setAuthReady(true);
+      }
+    })();
+
+    return () => {
+      mounted = false;
+      unsubscribe?.();
+    };
+  }, []);
+
+  async function handleSignOut() {
+    const { createClient } = await import("@/lib/supabase");
+    const sb = createClient();
+    await sb.auth.signOut();
+    window.location.href = "/";
+  }
 
   return (
     <nav className="sticky top-0 z-50 w-full border-b border-gray-100 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80">
@@ -61,14 +108,38 @@ export function Navbar() {
               <span>{locale === "ar" ? "EN" : "عربي"}</span>
             </button>
 
-            <Link href="/login">
-              <Button variant="ghost" size="sm">
-                {t.nav.login}
-              </Button>
-            </Link>
-            <Link href="/signup">
-              <Button size="sm">{t.nav.signup}</Button>
-            </Link>
+            {authReady && (
+              isAuthenticated ? (
+                <>
+                  <Link href="/dashboard">
+                    <Button variant="ghost" size="sm">
+                      {t.nav.dashboard}
+                    </Button>
+                  </Link>
+                  {isAdmin && (
+                    <Link href="/admin">
+                      <Button variant="ghost" size="sm">
+                        {locale === "ar" ? "أدمن" : "Admin"}
+                      </Button>
+                    </Link>
+                  )}
+                  <Button size="sm" onClick={handleSignOut}>
+                    {t.nav.logout}
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Link href="/login">
+                    <Button variant="ghost" size="sm">
+                      {t.nav.login}
+                    </Button>
+                  </Link>
+                  <Link href="/signup">
+                    <Button size="sm">{t.nav.signup}</Button>
+                  </Link>
+                </>
+              )
+            )}
 
             {/* Mobile menu toggle */}
             <button

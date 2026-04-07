@@ -15,7 +15,7 @@ export type Database = {
           id: string;
           email: string;
           full_name: string | null;
-          plan: "free" | "pro" | "business";
+          plan: "free" | "starter" | "pro" | "business";
           stripe_customer_id: string | null;
           created_at: string;
         };
@@ -47,7 +47,7 @@ export type Database = {
           id: string;
           user_id: string;
           stripe_subscription_id: string;
-          plan: "pro" | "business";
+          plan: "starter" | "pro" | "business";
           status: string;
           current_period_end: string;
         };

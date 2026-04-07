@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { useLocale } from "@/lib/locale-context";
 import { Navbar } from "@/components/layout/navbar";
 import { Footer } from "@/components/layout/footer";
@@ -12,8 +13,7 @@ import { Upload, Loader2, X, FileText, AlertCircle, ChevronDown, ChevronUp, Lock
 import { cn, countWords, toEasternArabic } from "@/lib/utils";
 import type { DetectionResult, MacroSignals } from "@/lib/detection/detector";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from "recharts";
-
-const FREE_WORD_LIMIT = 500;
+import { getMonthlyLimit, getUploadLimit, getWordLimit } from "@/lib/plan";
 
 /* ─── Score ring ─── */
 function ScoreRing({ pct, label, color }: { pct: number; label: string; color: string }) {
@@ -134,49 +134,110 @@ function SentenceCard({ s, t, dir }: { s: DetectionResult["sentence_data"][0]; t
 /* ─── Main page ─── */
 export default function AnalyzePage() {
   const { t, locale, dir } = useLocale();
+  const router = useRouter();
   const [text, setText] = useState("");
   const [loading, setLoading] = useState(false);
+  const [analysisProgress, setAnalysisProgress] = useState(0);
+  const [fileLoading, setFileLoading] = useState(false);
+  const [authLoading, setAuthLoading] = useState(true);
   const [result, setResult] = useState<DetectionResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [fileName, setFileName] = useState<string | null>(null);
-  const [userPlan, setUserPlan] = useState<"free" | "pro" | "business">("free");
+  const [userPlan, setUserPlan] = useState<"free" | "starter" | "pro" | "business">("free");
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [checksUsed, setChecksUsed] = useState(0);
+  const [uploadsUsed, setUploadsUsed] = useState(0);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  // Load user plan from Supabase
+  // Require auth and load role/plan/usage
   useEffect(() => {
     (async () => {
       try {
-        const { createClient } = await import("@/lib/supabase");
-        const sb = createClient();
-        const { data: { user } } = await sb.auth.getUser();
-        if (user) {
-          const { data } = await sb.from("users").select("plan").eq("id", user.id).single();
-          if (data?.plan) setUserPlan(data.plan as "free" | "pro" | "business");
+        const res = await fetch("/api/me");
+        if (!res.ok) {
+          router.replace("/login");
+          return;
         }
-      } catch { /* no-op */ }
+        const data = await res.json();
+        if (data?.plan) setUserPlan(data.plan as "free" | "starter" | "pro" | "business");
+        setIsAdmin(!!data?.is_admin);
+        const resetAt = data?.checks_reset_at ? new Date(data.checks_reset_at) : null;
+        const now = new Date();
+        const sameMonth =
+          !!resetAt &&
+          resetAt.getUTCFullYear() === now.getUTCFullYear() &&
+          resetAt.getUTCMonth() === now.getUTCMonth();
+        setChecksUsed(sameMonth ? (data?.checks_used_this_month ?? 0) : 0);
+        const uploadResetAt = data?.uploads_reset_at ? new Date(data.uploads_reset_at) : null;
+        const sameUploadMonth =
+          !!uploadResetAt &&
+          uploadResetAt.getUTCFullYear() === now.getUTCFullYear() &&
+          uploadResetAt.getUTCMonth() === now.getUTCMonth();
+        setUploadsUsed(sameUploadMonth ? (data?.uploads_used_this_month ?? 0) : 0);
+      } catch {
+        router.replace("/login");
+      } finally {
+        setAuthLoading(false);
+      }
     })();
-  }, []);
+  }, [router]);
 
-  const canUpload = userPlan === "pro" || userPlan === "business";
-  const wordLimit = userPlan === "free" ? FREE_WORD_LIMIT : userPlan === "pro" ? 5000 : Infinity;
+  const canUpload = isAdmin || userPlan === "pro" || userPlan === "business";
+  const wordLimit = isAdmin ? null : getWordLimit(userPlan);
+  const monthlyLimit = isAdmin ? null : getMonthlyLimit(userPlan);
+  const uploadLimit = isAdmin ? null : getUploadLimit(userPlan);
+  const uploadsRemaining = uploadLimit === null ? null : Math.max(uploadLimit - uploadsUsed, 0);
+  const progressWordLimit = wordLimit ?? 5000;
   const wordCount = countWords(text);
-  const overLimit = wordCount > wordLimit;
+  const overLimit = wordLimit !== null && wordCount > wordLimit;
+  const checksRemaining = monthlyLimit === null ? null : Math.max(monthlyLimit - checksUsed, 0);
+
+  useEffect(() => {
+    if (!loading) return;
+    setAnalysisProgress(8);
+    const id = setInterval(() => {
+      setAnalysisProgress((prev) => (prev >= 92 ? prev : prev + 4));
+    }, 350);
+    return () => clearInterval(id);
+  }, [loading]);
 
   async function handleAnalyze() {
     if (!text.trim()) { setError(t.errors.empty_text); return; }
     if (overLimit) { setError(t.errors.word_limit); return; }
+    if (checksRemaining !== null && checksRemaining <= 0) {
+      setError(locale === "ar" ? "وصلت للحد الشهري في خطتك" : "You reached your monthly plan limit");
+      return;
+    }
     setError(null);
     setLoading(true);
+    setAnalysisProgress(10);
     try {
       const res = await fetch("/api/detect", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ text }),
       });
-      if (!res.ok) throw new Error("Detection failed");
-      setResult(await res.json());
-    } catch {
-      setError(t.errors.generic);
+      const payload = await res.json();
+      if (!res.ok) {
+        if (payload?.code === "auth_required") {
+          router.push("/login");
+          return;
+        }
+        if (payload?.code === "plan_monthly_limit") {
+          setError(locale === "ar" ? "وصلت للحد الشهري في خطتك" : "You reached your monthly plan limit");
+          return;
+        }
+        if (payload?.code === "plan_word_limit") {
+          setError(locale === "ar" ? "تجاوزت حد الكلمات لخطة حسابك" : "You exceeded your plan word limit");
+          return;
+        }
+        throw new Error(payload?.error ?? "Detection failed");
+      }
+      setResult(payload);
+      setAnalysisProgress(100);
+      if (monthlyLimit !== null) setChecksUsed((v) => v + 1);
+    } catch (err: any) {
+      setError(err?.message ?? t.errors.generic);
     } finally {
       setLoading(false);
     }
@@ -186,8 +247,42 @@ export default function AnalyzePage() {
     const file = e.target.files?.[0];
     if (!file) return;
     if (file.size > 10 * 1024 * 1024) { setError(t.errors.file_size); return; }
-    setFileName(file.name);
-    setText(await file.text());
+    if (uploadsRemaining !== null && uploadsRemaining <= 0) {
+      setError(locale === "ar" ? "وصلت للحد الشهري لرفع الملفات" : "You reached your monthly file upload limit");
+      return;
+    }
+    setError(null);
+    setFileLoading(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const res = await fetch("/api/extract-text", { method: "POST", body: formData });
+      const data = await res.json();
+      if (!res.ok) {
+        if (data?.code === "auth_required") {
+          router.push("/login");
+          return;
+        }
+        if (data?.code === "plan_file_upload_not_allowed") {
+          throw new Error(locale === "ar" ? "رفع الملفات غير متاح في خطتك" : "File upload is not available on your plan");
+        }
+        if (data?.code === "plan_file_upload_limit") {
+          throw new Error(locale === "ar" ? "وصلت للحد الشهري لرفع الملفات" : "You reached your monthly file upload limit");
+        }
+        throw new Error(data?.error ?? t.errors.file_type);
+      }
+      const extracted = (data?.text ?? "").trim();
+      if (!extracted) throw new Error(locale === "ar" ? "تعذر استخراج النص من الملف" : "Could not extract text from file");
+      setFileName(file.name);
+      setText(extracted);
+      if (uploadLimit !== null) setUploadsUsed((v) => v + 1);
+    } catch (err: any) {
+      setError(err?.message ?? t.errors.file_type);
+      setFileName(null);
+    } finally {
+      setFileLoading(false);
+      e.target.value = "";
+    }
   }
 
   const pieData = result ? [
@@ -212,11 +307,23 @@ export default function AnalyzePage() {
             {t.analyze.title}
           </h1>
           <p className={cn("mb-8 text-sm text-gray-500", dir === "rtl" ? "text-right" : "text-left")}>
-            {t.analyze.free_limit}
+            {monthlyLimit === null
+              ? t.dashboard.unlimited
+              : locale === "ar"
+                ? `${toEasternArabic(String(checksRemaining ?? 0))} ${t.dashboard.checks_remaining}`
+                : `${checksRemaining ?? 0} ${t.dashboard.checks_remaining}`}
           </p>
 
+          {authLoading && (
+            <Card>
+              <CardContent className="py-10 flex justify-center">
+                <Loader2 className="h-5 w-5 animate-spin text-teal-600" />
+              </CardContent>
+            </Card>
+          )}
+
           {/* ── INPUT FORM ── */}
-          {!result ? (
+          {!authLoading && (!result ? (
             <Card>
               <CardContent className="pt-6">
                 {/* Textarea */}
@@ -250,7 +357,7 @@ export default function AnalyzePage() {
                     )}
                   </div>
                   <Progress
-                    value={Math.min((wordCount / (wordLimit === Infinity ? 5000 : wordLimit)) * 100, 100)}
+                    value={Math.min((wordCount / progressWordLimit) * 100, 100)}
                     className="mt-2 h-1.5"
                     indicatorClassName={overLimit ? "bg-red-500" : undefined}
                   />
@@ -265,9 +372,17 @@ export default function AnalyzePage() {
                     <>
                       <div
                         onClick={() => fileRef.current?.click()}
-                        className="flex cursor-pointer items-center justify-center gap-3 rounded-xl border-2 border-dashed border-gray-200 bg-gray-50 py-6 transition hover:border-teal-400 hover:bg-teal-50"
+                        className={cn(
+                          "flex cursor-pointer items-center justify-center gap-3 rounded-xl border-2 border-dashed border-gray-200 bg-gray-50 py-6 transition hover:border-teal-400 hover:bg-teal-50",
+                          fileLoading ? "pointer-events-none opacity-70" : ""
+                        )}
                       >
-                        {fileName ? (
+                        {fileLoading ? (
+                          <div className="flex items-center gap-2 text-sm text-gray-600">
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            <span>{locale === "ar" ? "جار معالجة الملف..." : "Processing file..."}</span>
+                          </div>
+                        ) : fileName ? (
                           <div className="flex items-center gap-2 text-sm text-teal-700">
                             <FileText className="h-4 w-4" />
                             <span>{fileName}</span>
@@ -279,9 +394,11 @@ export default function AnalyzePage() {
                           <div className="text-center">
                             <Upload className="mx-auto mb-1 h-5 w-5 text-gray-400" />
                             <p className="text-sm text-gray-500">{t.analyze.upload_hint}</p>
-                            {userPlan === "pro" && (
+                            {uploadLimit !== null && uploadLimit > 0 && (
                               <p className="text-xs text-gray-400 mt-1">
-                                {locale === "ar" ? "١٠ ملفات / شهر" : "10 files / month"}
+                                {locale === "ar"
+                                  ? `${toEasternArabic(String(uploadsRemaining ?? 0))} / ${toEasternArabic(String(uploadLimit))} ملف هذا الشهر`
+                                  : `${uploadsRemaining ?? 0} / ${uploadLimit} files this month`}
                               </p>
                             )}
                           </div>
@@ -321,6 +438,17 @@ export default function AnalyzePage() {
                     </Button>
                   )}
                 </div>
+                {loading && (
+                  <div className="mt-3">
+                    <div className={cn("mb-1 flex items-center text-xs text-gray-500", dir === "rtl" ? "flex-row-reverse" : "")}>
+                      <span>{locale === "ar" ? "تقدم التحليل" : "Analysis progress"}</span>
+                      <span className={cn("font-medium", dir === "rtl" ? "mr-auto" : "ml-auto")}>
+                        {locale === "ar" ? toEasternArabic(String(analysisProgress)) : analysisProgress}%
+                      </span>
+                    </div>
+                    <Progress value={analysisProgress} className="h-2" />
+                  </div>
+                )}
               </CardContent>
             </Card>
           ) : (
@@ -473,7 +601,7 @@ export default function AnalyzePage() {
                 <Button variant="outline">{t.results.save}</Button>
               </div>
             </div>
-          )}
+          ))}
         </div>
       </main>
       <Footer />

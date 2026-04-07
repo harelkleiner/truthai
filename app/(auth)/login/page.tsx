@@ -1,8 +1,9 @@
 "use client";
 
+import { Suspense } from "react";
 import Link from "next/link";
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useLocale } from "@/lib/locale-context";
 import { Button } from "@/components/ui/button";
 import { Loader2, AlertCircle, CheckCircle2 } from "lucide-react";
@@ -13,8 +14,19 @@ const SUPABASE_CONFIGURED =
   process.env.NEXT_PUBLIC_SUPABASE_URL !== "";
 
 export default function LoginPage() {
+  return (
+    <Suspense>
+      <LoginForm />
+    </Suspense>
+  );
+}
+
+function LoginForm() {
   const { t, dir } = useLocale();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const planParam = searchParams.get("plan");
+  const billingParam = searchParams.get("billing") ?? "monthly";
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -43,6 +55,14 @@ export default function LoginPage() {
       const { error: authError } = await supabase.auth.signInWithPassword({ email, password });
       if (authError) throw authError;
       setSuccess(true);
+      if (planParam) {
+        const res = await fetch("/api/checkout", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ plan: planParam, billing: billingParam }),
+        });
+        const data = await res.json();
+        if (data.url) { window.location.href = data.url; return; }
+      }
       setTimeout(() => router.push("/dashboard"), 800);
     } catch (err: any) {
       setError(err?.message ?? t.errors.generic);
@@ -59,9 +79,12 @@ export default function LoginPage() {
     setError(null);
     const { createClient } = await import("@/lib/supabase");
     const supabase = createClient();
+    const nextPath = planParam
+      ? `/checkout-redirect?plan=${planParam}&billing=${billingParam}`
+      : "/dashboard";
     const { error: oauthError } = await supabase.auth.signInWithOAuth({
       provider: "google",
-      options: { redirectTo: `${window.location.origin}/auth/callback?next=/dashboard` },
+      options: { redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(nextPath)}` },
     });
     if (oauthError) {
       setError(oauthError.message ?? t.errors.generic);
@@ -153,7 +176,7 @@ export default function LoginPage() {
 
           <p className={cn("mt-6 text-sm text-gray-500", dir === "rtl" ? "text-right" : "text-center")}>
             {t.auth.no_account}{" "}
-            <Link href="/signup" className="font-medium text-teal-600 hover:underline">
+            <Link href={planParam ? `/signup?plan=${planParam}&billing=${billingParam}` : "/signup"} className="font-medium text-teal-600 hover:underline">
               {t.nav.signup}
             </Link>
           </p>

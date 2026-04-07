@@ -186,7 +186,7 @@ function SignupForm() {
 
           <p className={cn("mt-6 text-sm text-gray-500", dir === "rtl" ? "text-right" : "text-center")}>
             {t.auth.have_account}{" "}
-            <Link href="/login" className="font-medium text-teal-600 hover:underline">
+            <Link href={planParam ? `/login?plan=${planParam}&billing=${billingParam}` : "/login"} className="font-medium text-teal-600 hover:underline">
               {t.nav.login}
             </Link>
           </p>

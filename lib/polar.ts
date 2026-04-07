@@ -12,16 +12,10 @@ export function getPolar(): Polar {
 }
 
 export const PLANS = {
-  pro: {
-    productId: process.env.POLAR_PRO_PRODUCT_ID ?? "",
-    name: "Pro",
-    price_usd: 24,
-  },
-  business: {
-    productId: process.env.POLAR_BUSINESS_PRODUCT_ID ?? "",
-    name: "Business",
-    price_usd: 99,
-  },
+  starter: { productId: process.env.POLAR_STARTER_PRODUCT_ID ?? "" },
+  starter_annual: { productId: process.env.POLAR_STARTER_ANNUAL_PRODUCT_ID ?? "" },
+  pro: { productId: process.env.POLAR_PRO_PRODUCT_ID ?? "" },
+  pro_annual: { productId: process.env.POLAR_PRO_ANNUAL_PRODUCT_ID ?? "" },
 } as const;
 
 export async function createCheckoutSession({

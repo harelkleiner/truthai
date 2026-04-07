@@ -144,7 +144,7 @@ function PricingCard({
     try {
       const res = await fetch("/api/checkout", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ plan, email: "" }),
+        body: JSON.stringify({ plan, billing }),
       });
       const data = await res.json();
       if (data.url) window.location.href = data.url;

@@ -146,10 +146,14 @@ function PricingCard({
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ plan, billing }),
       });
+      if (res.status === 401) {
+        window.location.href = `/signup?plan=${plan}&billing=${billing}`;
+        return;
+      }
       const data = await res.json();
       if (data.url) window.location.href = data.url;
-      else window.location.href = "/signup";
-    } catch { window.location.href = "/signup"; }
+      else window.location.href = `/signup?plan=${plan}&billing=${billing}`;
+    } catch { window.location.href = `/signup?plan=${plan}&billing=${billing}`; }
   }
 
   return (

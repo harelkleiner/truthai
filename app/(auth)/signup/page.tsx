@@ -1,8 +1,9 @@
 "use client";
 
+import { Suspense } from "react";
 import Link from "next/link";
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useLocale } from "@/lib/locale-context";
 import { Button } from "@/components/ui/button";
 import { Loader2, AlertCircle, CheckCircle2 } from "lucide-react";
@@ -13,8 +14,19 @@ const SUPABASE_CONFIGURED =
   process.env.NEXT_PUBLIC_SUPABASE_URL !== "";
 
 export default function SignupPage() {
+  return (
+    <Suspense>
+      <SignupForm />
+    </Suspense>
+  );
+}
+
+function SignupForm() {
   const { t, dir } = useLocale();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const planParam = searchParams.get("plan");
+  const billingParam = searchParams.get("billing") ?? "monthly";
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -48,6 +60,14 @@ export default function SignupPage() {
       });
       if (authError) throw authError;
       setSuccess(true);
+      if (planParam) {
+        const res = await fetch("/api/checkout", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ plan: planParam, billing: billingParam }),
+        });
+        const data = await res.json();
+        if (data.url) { window.location.href = data.url; return; }
+      }
       setTimeout(() => router.push("/dashboard"), 1000);
     } catch (err: any) {
       setError(err?.message ?? t.errors.generic);
@@ -61,12 +81,19 @@ export default function SignupPage() {
       setError(dir === "rtl" ? "Supabase غير مفعّل بعد" : "Supabase not configured yet");
       return;
     }
+    setError(null);
     const { createClient } = await import("@/lib/supabase");
     const supabase = createClient();
-    await supabase.auth.signInWithOAuth({
+    const nextPath = planParam
+      ? `/checkout-redirect?plan=${planParam}&billing=${billingParam}`
+      : "/dashboard";
+    const { error: oauthError } = await supabase.auth.signInWithOAuth({
       provider: "google",
-      options: { redirectTo: `${window.location.origin}/dashboard` },
+      options: { redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(nextPath)}` },
     });
+    if (oauthError) {
+      setError(oauthError.message ?? t.errors.generic);
+    }
   }
 
   return (

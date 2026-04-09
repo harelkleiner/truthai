@@ -140,7 +140,7 @@ function PricingCard({
 
   async function handleClick() {
     if (plan === "free") { window.location.href = "/signup"; return; }
-    if (plan === "business") { window.location.href = "/contact"; return; }
+    
     try {
       const res = await fetch("/api/checkout", {
         method: "POST", headers: { "Content-Type": "application/json" },
@@ -224,7 +224,12 @@ function PricingCard({
       </ul>
       <Button
         onClick={handleClick}
-        className={cn("w-full font-semibold", highlighted ? "bg-white text-teal-700 hover:bg-teal-50" : "")}
+        className={cn(
+          "w-full font-semibold transition-all duration-200 cursor-pointer",
+          highlighted
+            ? "bg-white text-teal-700 hover:bg-teal-50 hover:shadow-lg hover:scale-[1.03] active:scale-[0.98]"
+            : "hover:shadow-lg hover:scale-[1.03] hover:brightness-110 active:scale-[0.98]",
+        )}
         variant={highlighted ? "secondary" : "default"}
       >
         {cta}
@@ -609,40 +614,43 @@ export default function HomePage() {
 
       {/* ── PRICING ── */}
       {(() => {
+        // Row order: checks, words, dialect, humanize, uploads, history, support
         const freeFeatures: PlanFeature[] = [
           { text: ar ? "٥ فحوصات شهرياً" : "5 checks / month", included: true },
-          { text: ar ? "حتى ٥٠٠ كلمة لكل فحص" : "Up to 500 words per check", included: true },
+          { text: ar ? "حتى ٥٠٠ كلمة لكل فحص" : "Up to 500 words / check", included: true },
           { text: ar ? "كشف اللهجة الأساسي" : "Basic dialect detection", included: true },
-          { text: ar ? "نتائج فورية" : "Instant results", included: true },
           { text: ar ? "أنسنة النص" : "Text humanization", included: false },
           { text: ar ? "رفع الملفات" : "File upload", included: false },
+          { text: ar ? "سجل التحليلات" : "Analysis history", included: false },
           { text: ar ? "دعم أولوي" : "Priority support", included: false },
         ];
         const starterFeatures: PlanFeature[] = [
           { text: ar ? "٥٠ فحصاً شهرياً" : "50 checks / month", included: true },
-          { text: ar ? "حتى ٢٬٠٠٠ كلمة لكل فحص" : "Up to 2,000 words per check", included: true },
+          { text: ar ? "حتى ٢٬٠٠٠ كلمة لكل فحص" : "Up to 2,000 words / check", included: true },
           { text: ar ? "كشف لهجة متقدم" : "Advanced dialect detection", included: true },
           { text: ar ? "٢٠ أنسنة شهرياً" : "20 humanizations / month", included: true },
+          { text: ar ? "رفع الملفات" : "File upload", included: false },
           { text: ar ? "سجل كامل للتحليلات" : "Full analysis history", included: true },
-          { text: ar ? "درجة صحة المحتوى" : "Authenticity scoring", included: true },
           { text: ar ? "دعم أولوي" : "Priority support", included: false },
         ];
         const proFeatures: PlanFeature[] = [
           { text: ar ? "فحوصات غير محدودة" : "Unlimited checks", included: true },
-          { text: ar ? "كلمات غير محدودة لكل فحص" : "Unlimited words per check", included: true },
-          { text: ar ? "١٠٠ أنسنة شهرياً" : "100 humanizations / month", included: true },
-          { text: ar ? "رفع الملفات (٥٠ ملف / شهر)" : "50 file uploads / month", included: true },
+          { text: ar ? "كلمات غير محدودة لكل فحص" : "Unlimited words / check", included: true },
           { text: ar ? "كشف لهجة متقدم" : "Advanced dialect detection", included: true },
+          { text: ar ? "١٠٠ أنسنة شهرياً" : "100 humanizations / month", included: true },
+          { text: ar ? "٥٠ ملف شهرياً" : "50 file uploads / month", included: true },
+          { text: ar ? "سجل كامل للتحليلات" : "Full analysis history", included: true },
           { text: ar ? "دعم أولوي" : "Priority support", included: true },
-          { text: ar ? "مقاعد الفريق" : "Team seats", included: false },
         ];
         const bizFeatures: PlanFeature[] = [
           { text: ar ? "فحوصات غير محدودة" : "Unlimited checks", included: true },
-          { text: ar ? "كلمات غير محدودة" : "Unlimited words", included: true },
+          { text: ar ? "كلمات غير محدودة" : "Unlimited words / check", included: true },
+          { text: ar ? "كشف لهجة متقدم" : "Advanced dialect detection", included: true },
           { text: ar ? "أنسنة غير محدودة" : "Unlimited humanizations", included: true },
           { text: ar ? "رفع ملفات غير محدود" : "Unlimited file uploads", included: true },
-          { text: ar ? "تقارير PDF بعلامتك التجارية" : "White-label PDF reports", included: true },
           { text: ar ? "حتى ١٠ مقاعد للفريق" : "Up to 10 team seats", included: true },
+          { text: ar ? "مدير حساب مخصص" : "Dedicated account manager", included: true },
+          { text: ar ? "تقارير PDF بعلامتك التجارية" : "White-label PDF reports", included: true },
           { text: ar ? "مدير حساب مخصص" : "Dedicated account manager", included: true },
         ];
         return (
@@ -689,8 +697,8 @@ export default function HomePage() {
                   features={proFeatures} cta={ar ? "اشترك في Pro" : "Go Pro"}
                   badge={ar ? "الأكثر شعبية ✦" : "Most Popular ✦"} highlighted
                   locale={locale} plan="pro" billing={billing} />
-                <PricingCard name={ar ? "أعمال" : "Business"} price={99} annualPrice={79}
-                  features={bizFeatures} cta={ar ? "تواصل مع فريق المبيعات" : "Contact Sales"}
+                <PricingCard name={ar ? "غير محدود" : "Unlimited"} price={99} annualPrice={79}
+                  features={bizFeatures} cta={ar ? "انطلق بلا حدود" : "Go Unlimited"}
                   locale={locale} plan="business" billing={billing} />
               </div>
               <p className="mt-8 text-center text-xs text-gray-400">
